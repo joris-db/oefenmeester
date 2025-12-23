@@ -43,6 +43,9 @@
             100% { transform: scale(1); opacity: 1; }
         }
         .animate-levelup { animation: levelUp 0.5s ease-out; }
+        
+        .progress-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.5s ease-out; }
     </style>
 </head>
 <body>
@@ -51,7 +54,7 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        const appId = 'myrthe-oefenmeester-v6';
+        const appId = 'myrthe-oefenmeester-v7';
 
         const germanLidlWords = [
             { nl: "De vergadering", de: "Besprechung" }, { nl: "De afspraak", de: "Termin" }, { nl: "De collega", de: "Kollege" }, { nl: "De afdeling", de: "Abteilung" },
@@ -94,7 +97,9 @@
                 return saved ? JSON.parse(saved) : {
                     xp: 0, level: 1, streak: 0,
                     correctMath: 0, correctGerman: 0, correctFlags: 0,
-                    mathLevel: 1, flagBestStreak: 0
+                    mathLevel: 1, flagBestStreak: 0,
+                    totalPoints: 0, 
+                    badges: [] // ['math_pro', 'flag_master', 'german_ace']
                 };
             });
 
@@ -106,27 +111,24 @@
             const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false });
             const [currentProblem, setCurrentProblem] = useState(null);
 
-            const getXpThreshold = (level) => Math.floor(100 * Math.pow(1.1, level - 1));
+            const getXpThreshold = (level) => Math.floor(100 * Math.pow(1.15, level - 1));
 
             useEffect(() => {
                 localStorage.setItem(`${appId}_stats`, JSON.stringify(stats));
             }, [stats]);
 
-            // Verbeterde landen-lader
             useEffect(() => {
                 const loadCountries = async () => {
                     try {
                         const response = await fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags');
-                        if (!response.ok) throw new Error('Netwerkfout');
+                        if (!response.ok) throw new Error('API Error');
                         const data = await response.json();
                         const formatted = data.map(c => ({
-                            name: c.translations?.nld?.common || c.name?.common || "Onbekend",
+                            name: c.translations?.nld?.common || c.name?.common,
                             flag: c.flags?.svg || c.flags?.png
-                        })).filter(c => c.name && c.flag && c.name !== "Onbekend");
+                        })).filter(c => c.name && c.flag);
                         setCountries(formatted);
                     } catch (error) {
-                        console.error("Kon landen niet laden:", error);
-                        // Fallback data zodat de app niet crasht
                         setCountries([
                             {name: "Nederland", flag: "https://flagcdn.com/nl.svg"},
                             {name: "Duitsland", flag: "https://flagcdn.com/de.svg"},
@@ -143,15 +145,27 @@
                     let newXP = prev.xp + amount;
                     let currentLevel = prev.level;
                     let threshold = getXpThreshold(currentLevel);
+                    let newBadges = [...prev.badges];
+
                     while (newXP >= threshold) {
                         newXP -= threshold;
                         currentLevel++;
                         threshold = getXpThreshold(currentLevel);
                         setFeedback({ type: 'success', text: `LEVEL UP! Level ${currentLevel} 🎉` });
                     }
-                    const updates = { ...prev, xp: newXP, level: currentLevel };
-                    if (categoryKey) updates[categoryKey] = (prev[categoryKey] || 0) + 1;
-                    return updates;
+
+                    // Check for badges
+                    if (prev.correctMath + 1 >= 50 && !newBadges.includes('reken_wonder')) newBadges.push('reken_wonder');
+                    if (prev.flagBestStreak >= 10 && !newBadges.includes('vlaggen_koning')) newBadges.push('vlaggen_koning');
+
+                    return { 
+                        ...prev, 
+                        xp: newXP, 
+                        level: currentLevel, 
+                        totalPoints: prev.totalPoints + amount,
+                        badges: newBadges,
+                        [categoryKey]: (prev[categoryKey] || 0) + 1
+                    };
                 });
             };
 
@@ -159,10 +173,10 @@
                 const opsPool = types || Object.keys(selectedTypes).filter(k => selectedTypes[k]);
                 const type = opsPool.length > 0 ? opsPool[Math.floor(Math.random() * opsPool.length)] : 'plus';
                 let n1, n2, q, a;
-                const minVal = Math.max(2, Math.floor(level / 2));
+                const range = level * 10;
                 switch(type) {
-                    case 'plus': n1 = Math.floor(Math.random() * (level * 15)) + minVal; n2 = Math.floor(Math.random() * (level * 15)) + minVal; q = `${n1} + ${n2}`; a = n1 + n2; break;
-                    case 'min': n1 = Math.floor(Math.random() * (level * 15)) + (minVal * 2); n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal; q = `${n1} - ${n2}`; a = n1 - n2; break;
+                    case 'plus': n1 = Math.floor(Math.random() * range) + 2; n2 = Math.floor(Math.random() * range) + 2; q = `${n1} + ${n2}`; a = n1 + n2; break;
+                    case 'min': n1 = Math.floor(Math.random() * range) + 10; n2 = Math.floor(Math.random() * (n1 - 2)) + 2; q = `${n1} - ${n2}`; a = n1 - n2; break;
                     case 'keer': n1 = Math.floor(Math.random() * 10) + 1; n2 = Math.floor(Math.random() * 10) + 1; q = `${n1} × ${n2}`; a = n1 * n2; break;
                     case 'gedeeld': n2 = Math.floor(Math.random() * 9) + 2; a = Math.floor(Math.random() * 10) + 1; n1 = n2 * a; q = `${n1} : ${n2}`; break;
                 }
@@ -170,11 +184,7 @@
             };
 
             const generateGermanProblem = () => {
-                const availableWords = germanLidlWords.filter(w => !lastWords.includes(w.de));
-                const pool = availableWords.length > 0 ? availableWords : germanLidlWords;
-                const correct = pool[Math.floor(Math.random() * pool.length)];
-                setLastWords(prev => [correct.de, ...prev].slice(0, 10));
-
+                const correct = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)];
                 let opts = [correct.de];
                 while(opts.length < 4) {
                     const r = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)].de;
@@ -196,25 +206,16 @@
 
             const handleChoiceAnswer = (ans) => {
                 if (feedback) return;
-                
-                let isCorrect = false;
-                if (currentProblem.category === 'german') {
-                    isCorrect = ans === currentProblem.de;
-                } else {
-                    isCorrect = ans.name === currentProblem.name;
-                }
+                const isCorrect = (currentProblem.category === 'german') ? (ans === currentProblem.de) : (ans.name === currentProblem.name);
 
-                if (view === 'exam-choice') {
-                    nextExamQuestion(isCorrect);
-                    return;
-                }
+                if (view === 'exam-choice') { nextExamQuestion(isCorrect); return; }
 
                 if (view === 'flag-streak') {
                     if (isCorrect) {
                         const newStreak = streakCount + 1;
                         setStreakCount(newStreak);
                         if (newStreak > stats.flagBestStreak) setStats(prev => ({ ...prev, flagBestStreak: newStreak }));
-                        addXP(5, 'correctFlags');
+                        addXP(10, 'correctFlags');
                         setFeedback({ type: 'success', text: `Streak: ${newStreak}! 🔥` });
                         setTimeout(() => { setFeedback(null); setCurrentProblem(generateFlagProblemData()); }, 800);
                     } else {
@@ -225,58 +226,46 @@
                 }
 
                 if (isCorrect) {
-                    addXP(15, (currentProblem.category === 'german' ? 'correctGerman' : 'correctFlags'));
+                    addXP(20, currentProblem.category === 'german' ? 'correctGerman' : 'correctFlags');
                     setFeedback({ type: 'success', text: 'Super gedaan! ✨' });
                     setTimeout(() => { 
                         setFeedback(null); 
                         setCurrentProblem(currentProblem.category === 'german' ? generateGermanProblem() : generateFlagProblemData()); 
                     }, 1000);
                 } else {
-                    const text = (currentProblem.category === 'german') 
-                        ? `Jammer! Het was ${currentProblem.de}` 
-                        : `Nee, dit is de vlag van ${ans.name}`;
-                    setFeedback({ type: 'error', text });
-                    setTimeout(() => setFeedback(null), 2000);
+                    setFeedback({ type: 'error', text: 'Nog eens proberen!' });
+                    setTimeout(() => setFeedback(null), 1500);
                 }
             };
 
-            const startMathGame = useCallback(() => {
-                setMathProblem(generateMathProblem(stats.mathLevel));
-                setUserAnswer('');
-                setFeedback(null);
-                setView('math-game');
-            }, [selectedTypes, stats.mathLevel]);
-
-            const startGermanGame = () => {
-                setCurrentProblem(generateGermanProblem());
-                setFeedback(null);
-                setView('german-game');
-            };
-
-            const startFlagGame = () => {
-                const prob = generateFlagProblemData();
-                if (prob) {
-                    setCurrentProblem(prob);
-                    setFeedback(null);
-                    setView('flags-game');
-                }
-            };
-
-            const startStreakMode = () => {
-                const prob = generateFlagProblemData();
-                if (prob) {
-                    setStreakCount(0);
-                    setCurrentProblem(prob);
-                    setFeedback(null);
-                    setView('flag-streak');
+            const handleMathAnswer = () => {
+                if (feedback || !userAnswer) return;
+                const isCorrect = parseInt(userAnswer) === mathProblem.a;
+                if (view === 'exam-math') { nextExamQuestion(isCorrect); return; }
+                if (isCorrect) {
+                    addXP(25, 'correctMath');
+                    setMathStreak(s => {
+                        const next = s + 1;
+                        if (next >= 5) setStats(p => ({ ...p, mathLevel: p.mathLevel + 1 }));
+                        return next >= 5 ? 0 : next;
+                    });
+                    setFeedback({type:'success', text:'Lekker hoor! ✨'});
+                    setTimeout(() => {
+                        setMathProblem(generateMathProblem(stats.mathLevel));
+                        setUserAnswer('');
+                        setFeedback(null);
+                    }, 800);
+                } else {
+                    setFeedback({type:'error', text:`Nee, het was ${mathProblem.a}`});
+                    setMathStreak(0);
+                    setTimeout(() => {setFeedback(null); setUserAnswer('');}, 2000);
                 }
             };
 
             const startExam = (type) => {
-                setExamState({ type, currentQuestion: 1, correctCount: 0, totalQuestions: 40, level: stats.mathLevel });
+                setExamState({ type, currentQuestion: 1, correctCount: 0, totalQuestions: 20 });
                 if (type === 'math') {
-                    setMathProblem(generateMathProblem(stats.mathLevel, ['plus', 'min', 'keer', 'gedeeld']));
-                    setUserAnswer('');
+                    setMathProblem(generateMathProblem(stats.mathLevel));
                     setView('exam-math');
                 } else {
                     setCurrentProblem(type === 'german' ? generateGermanProblem() : generateFlagProblemData());
@@ -289,33 +278,16 @@
                 const newCorrectCount = isCorrect ? examState.correctCount + 1 : examState.correctCount;
                 if (examState.currentQuestion >= examState.totalQuestions) {
                     const percentage = Math.round((newCorrectCount / examState.totalQuestions) * 100);
-                    setExamState(prev => ({ ...prev, correctCount: newCorrectCount, finished: true, passed: percentage >= 85, percentage }));
+                    setExamState(prev => ({ ...prev, correctCount: newCorrectCount, finished: true, passed: percentage >= 80, percentage }));
                     setView('exam-result');
                 } else {
                     setExamState(prev => ({ ...prev, currentQuestion: prev.currentQuestion + 1, correctCount: newCorrectCount }));
                     if (examState.type === 'math') {
-                        setMathProblem(generateMathProblem(examState.level, ['plus', 'min', 'keer', 'gedeeld']));
+                        setMathProblem(generateMathProblem(stats.mathLevel));
                         setUserAnswer('');
                     } else {
                         setCurrentProblem(examState.type === 'german' ? generateGermanProblem() : generateFlagProblemData());
                     }
-                }
-            };
-
-            const handleMathAnswer = () => {
-                if (feedback || !userAnswer) return;
-                const isCorrect = parseInt(userAnswer) === mathProblem.a;
-                if (view === 'exam-math') { nextExamQuestion(isCorrect); return; }
-                if (isCorrect) {
-                    addXP(20, 'correctMath');
-                    setMathStreak(s => (s + 1 >= 5 ? 0 : s + 1));
-                    if (mathStreak + 1 >= 5) setStats(prev => ({...prev, mathLevel: prev.mathLevel + 1}));
-                    setFeedback({type:'success', text:'Lekker hoor! ✨'});
-                    setTimeout(startMathGame, 800);
-                } else {
-                    setFeedback({type:'error', text:`Nee, het was ${mathProblem.a}`});
-                    setMathStreak(0);
-                    setTimeout(() => {setFeedback(null); setUserAnswer('');}, 2000);
                 }
             };
 
@@ -335,6 +307,9 @@
             );
 
             if (view === 'menu') {
+                const threshold = getXpThreshold(stats.level);
+                const progress = (stats.xp / threshold) * 100;
+                
                 return (
                     <div className="app-container p-6 flex flex-col items-center overflow-y-auto scroll-hide">
                         <div className="w-full max-w-sm pt-8 mb-8 flex justify-between items-center">
@@ -344,11 +319,20 @@
                             </div>
                             <button onClick={() => setView('achievements')} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-orange-400"><Icon name="trophy" size={20} /></button>
                         </div>
+
+                        <div className="w-full max-w-sm mb-8 glass p-4 rounded-2xl">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-[10px] font-black uppercase text-slate-400">Level {stats.level} Voortgang</span>
+                                <span className="text-[10px] font-black text-indigo-400">{Math.round(stats.xp)} / {threshold} XP</span>
+                            </div>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${progress}%` }} /></div>
+                        </div>
+
                         <div className="w-full max-w-sm space-y-4">
                             <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest">Kies een vak</h3>
-                            <button onClick={() => setView('math-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-indigo-500"><div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Rekenen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Plus, min, keer & gedeeld</span></div></button>
+                            <button onClick={() => setView('math-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-indigo-500"><div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Rekenen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Niveau {stats.mathLevel}</span></div></button>
                             <button onClick={() => setView('german-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-rose-500"><div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="languages" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Duits</span><span className="text-[10px] font-bold text-slate-500 uppercase">Lidl woorden oefenen</span></div></button>
-                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Landen van de wereld</span></div></button>
+                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Hoogste streak: {stats.flagBestStreak}</span></div></button>
                         </div>
                     </div>
                 );
@@ -367,7 +351,7 @@
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={startMathGame} className="mt-8 bg-white text-slate-950 p-6 rounded-[2rem] font-black text-xl italic uppercase shadow-xl active:scale-95">Start Oefenen! 🚀</button>
+                            <button onClick={() => { setMathProblem(generateMathProblem(stats.mathLevel)); setUserAnswer(''); setView('math-game'); }} className="mt-8 bg-white text-slate-950 p-6 rounded-[2rem] font-black text-xl italic uppercase shadow-xl active:scale-95">Start Oefenen! 🚀</button>
                         </div>
                     </div>
                 );
@@ -377,7 +361,7 @@
                 const isExam = view === 'exam-math';
                 return (
                     <div className="app-container">
-                        <Header title={isExam ? `Toets: ${examState.currentQuestion}/40` : "Sommen"} onBack={() => setView(isExam ? 'math-category' : 'math-setup')} />
+                        <Header title={isExam ? `Toets: ${examState.currentQuestion}/${examState.totalQuestions}` : "Sommen"} onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                             {!isExam && <div className="flex gap-2 mb-6">{[...Array(5)].map((_, i) => (<div key={i} className={`w-3 h-3 rounded-full ${i < mathStreak ? 'bg-indigo-400' : 'bg-slate-800'}`} />))}</div>}
                             <div className="text-7xl font-black mb-10 tracking-tighter drop-shadow-2xl">{mathProblem.q}</div>
@@ -390,37 +374,23 @@
             }
 
             if ((view === 'german-game' || view === 'flags-game' || view === 'exam-choice' || view === 'flag-streak') && currentProblem) {
-                const isFlags = (currentProblem.category === 'flags');
-                const isStreak = view === 'flag-streak';
-
+                const isFlags = currentProblem.category === 'flags';
                 return (
                     <div className="app-container">
-                        <Header title={isStreak ? "Streak Mode" : (isFlags ? "Vlaggen" : "Duits")} onBack={() => setView('menu')} />
+                        <Header title={view === 'flag-streak' ? "Flag Streak" : (isFlags ? "Vlaggen" : "Duits")} onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col p-8 items-center justify-start gap-6 text-center overflow-y-auto pt-8 scroll-hide">
-                            {isStreak && <div className="bg-orange-500/20 text-orange-400 px-4 py-2 rounded-full font-black text-sm border border-orange-500/30">Streak: {streakCount}</div>}
-                            
                             <div className="space-y-2">
-                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest italic">
-                                    {isFlags ? "Zoek de vlag van" : "Duitse vertaling van"}
-                                </span>
-                                <div className="flex flex-col items-center gap-4">
-                                    <h2 className={`text-3xl font-black italic tracking-tighter leading-tight ${isFlags ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {isFlags ? currentProblem.name : currentProblem.nl}
-                                    </h2>
-                                </div>
+                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">{isFlags ? "Zoek de vlag van" : "Vertaal naar het Duits"}</span>
+                                <h2 className="text-3xl font-black italic tracking-tighter text-white">{isFlags ? currentProblem.name : currentProblem.nl}</h2>
                             </div>
-                            
                             <div className={`grid ${isFlags ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full max-w-sm`}>
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleChoiceAnswer(o)} className={`${isFlags ? 'flag-card active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} glass border-2 border-transparent active:border-white/40 transition-all`}>
+                                    <button key={i} onClick={() => handleChoiceAnswer(o)} className={`${isFlags ? 'flag-card active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} glass border-2 border-transparent active:border-white/40`}>
                                         {isFlags ? <img src={o.flag} className="flag-img" alt="flag" /> : o}
                                     </button>
                                 ))}
                             </div>
-
-                            <div className="h-16 mt-4">
-                                {feedback && <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}
-                            </div>
+                            <div className="h-16 mt-4">{feedback && <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}</div>
                         </div>
                     </div>
                 );
@@ -429,22 +399,43 @@
             if (view === 'exam-result') {
                 return (
                     <div className="app-container flex flex-col items-center justify-center p-8 text-center">
-                        <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-2xl ${examState.passed ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'}`}><Icon name={examState.passed ? "check" : "x"} size={64} /></div>
+                        <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-2xl ${examState.passed ? 'bg-emerald-500' : 'bg-rose-500'}`}><Icon name={examState.passed ? "check" : "x"} size={64} /></div>
                         <h2 className="text-4xl font-black italic uppercase mb-2 tracking-tighter">{examState.passed ? 'Geslaagd!' : 'Gezakt...'}</h2>
-                        <div className="text-6xl font-black text-white/90 mb-4">{examState.percentage}%</div>
-                        <button onClick={() => setView('menu')} className="w-full max-w-sm bg-indigo-600 p-5 rounded-3xl font-black uppercase italic active:scale-95">Terug naar menu</button>
+                        <div className="text-6xl font-black text-white/90 mb-8">{examState.percentage}%</div>
+                        <button onClick={() => setView('menu')} className="w-full max-w-sm bg-indigo-600 p-5 rounded-3xl font-black uppercase italic active:scale-95 shadow-xl shadow-indigo-500/20">Terug naar menu</button>
                     </div>
                 );
             }
-            
+
             if (view === 'achievements') {
+                const badges = [
+                    { id: 'reken_wonder', icon: 'zap', name: 'Reken Wonder', desc: '50 goede sommen', color: 'indigo' },
+                    { id: 'vlaggen_koning', icon: 'crown', name: 'Vlaggen Koning', desc: 'Streak van 10+', color: 'emerald' },
+                    { id: 'lidl_expert', icon: 'shopping-cart', name: 'Lidl Expert', desc: 'Duits niveau 5', color: 'rose' }
+                ];
                 return (
                     <div className="app-container">
                         <Header title="Statistieken" onBack={() => setView('menu')} />
-                        <div className="flex-1 overflow-y-auto p-6 scroll-hide">
+                        <div className="flex-1 overflow-y-auto p-6 scroll-hide space-y-6">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="glass p-6 rounded-3xl text-center shadow-xl"><div className="text-orange-500 mb-2 flex justify-center"><Icon name="flame" size={32} /></div><div className="text-2xl font-black">{stats.streak}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Streak</div></div>
-                                <div className="glass p-6 rounded-3xl text-center shadow-xl"><div className="text-indigo-500 mb-2 flex justify-center"><Icon name="star" size={32} /></div><div className="text-2xl font-black">{stats.level}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Level</div></div>
+                                <div className="glass p-6 rounded-3xl text-center"><div className="text-orange-500 mb-2 flex justify-center"><Icon name="flame" size={32} /></div><div className="text-2xl font-black">{stats.streak}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Dagen</div></div>
+                                <div className="glass p-6 rounded-3xl text-center"><div className="text-indigo-500 mb-2 flex justify-center"><Icon name="star" size={32} /></div><div className="text-2xl font-black">{stats.level}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Level</div></div>
+                                <div className="glass p-6 rounded-3xl text-center"><div className="text-emerald-500 mb-2 flex justify-center"><Icon name="trending-up" size={32} /></div><div className="text-2xl font-black">{stats.flagBestStreak}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Beste Flag Streak</div></div>
+                                <div className="glass p-6 rounded-3xl text-center"><div className="text-rose-500 mb-2 flex justify-center"><Icon name="award" size={32} /></div><div className="text-2xl font-black">{stats.totalPoints}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Totaal XP</div></div>
+                            </div>
+
+                            <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest mt-8">Je Badges</h3>
+                            <div className="space-y-3">
+                                {badges.map(b => {
+                                    const unlocked = stats.badges.includes(b.id);
+                                    return (
+                                        <div key={b.id} className={`glass p-4 rounded-2xl flex items-center gap-4 border-l-4 ${unlocked ? `border-${b.color}-500` : 'border-slate-800 opacity-40 grayscale'}`}>
+                                            <div className={`${unlocked ? `bg-${b.color}-600` : 'bg-slate-800'} p-3 rounded-xl`}><Icon name={b.icon} size={20} /></div>
+                                            <div><div className="font-black italic text-sm uppercase">{b.name}</div><div className="text-[10px] font-bold text-slate-500 uppercase">{b.desc}</div></div>
+                                            {unlocked && <div className="ml-auto text-emerald-400"><Icon name="check-circle" size={16} /></div>}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -454,9 +445,9 @@
             if (view.includes('-category')) {
                 const type = view.split('-')[0];
                 const config = {
-                    math: { title: "Rekenen", color: "indigo", opts: [{ name: 'Training', desc: 'Oefenen', icon: 'graduation-cap', action: () => setView('math-setup') }, { name: 'Toets', desc: '40 vragen', icon: 'scroll-text', action: () => startExam('math') }] },
-                    german: { title: "Duits", color: "rose", opts: [{ name: 'Oefenen', desc: 'Woorden leren', icon: 'book-open', action: startGermanGame }, { name: 'Toets', desc: '40 vragen', icon: 'scroll-text', action: () => startExam('german') }] },
-                    flags: { title: "Vlaggen", color: "emerald", opts: [{ name: 'Oefenen', desc: 'Alle landen', icon: 'globe', action: startFlagGame }, { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: startStreakMode }, { name: 'Toets', desc: '40 landen', icon: 'scroll-text', action: () => startExam('flags') }] }
+                    math: { title: "Rekenen", color: "indigo", opts: [{ name: 'Training', desc: 'Sommen maken', icon: 'graduation-cap', action: () => setView('math-setup') }, { name: 'Toets', desc: '20 vragen', icon: 'scroll-text', action: () => startExam('math') }] },
+                    german: { title: "Duits", color: "rose", opts: [{ name: 'Oefenen', desc: 'Woorden leren', icon: 'book-open', action: () => { setCurrentProblem(generateGermanProblem()); setView('german-game'); } }, { name: 'Toets', desc: '20 vragen', icon: 'scroll-text', action: () => startExam('german') }] },
+                    flags: { title: "Vlaggen", color: "emerald", opts: [{ name: 'Oefenen', desc: 'Landen leren', icon: 'globe', action: () => { setCurrentProblem(generateFlagProblemData()); setView('flags-game'); } }, { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: () => { setStreakCount(0); setCurrentProblem(generateFlagProblemData()); setView('flag-streak'); } }, { name: 'Toets', desc: '20 landen', icon: 'scroll-text', action: () => startExam('flags') }] }
                 }[type];
                 
                 return (
@@ -464,14 +455,9 @@
                         <Header title={config.title} onBack={() => setView('menu')} />
                         <div className="p-8 flex flex-col gap-6 justify-center flex-1 max-w-sm mx-auto w-full">
                             {config.opts.map((opt, i) => (
-                                <button key={i} onClick={opt.action} disabled={type === 'flags' && countries.length === 0} className={`w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 border-b-4 border-${config.color}-500/50 disabled:opacity-50`}>
+                                <button key={i} onClick={opt.action} disabled={type === 'flags' && countries.length === 0} className={`w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 border-b-4 border-${config.color}-500/50`}>
                                     <div className={`bg-${config.color}-600 p-4 rounded-2xl shadow-lg`}><Icon name={opt.icon} size={24} /></div>
-                                    <div className="text-left">
-                                        <span className="block text-xl font-black italic uppercase">{opt.name}</span>
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase">
-                                            {type === 'flags' && countries.length === 0 ? "Laden..." : opt.desc}
-                                        </span>
-                                    </div>
+                                    <div className="text-left"><span className="block text-xl font-black italic uppercase">{opt.name}</span><span className="text-[10px] font-bold text-slate-500 uppercase">{opt.desc}</span></div>
                                 </button>
                             ))}
                         </div>
