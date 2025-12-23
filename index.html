@@ -33,7 +33,7 @@
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .scroll-hide::-webkit-scrollbar { display: none; }
         
-        /* Specifieke optimalisatie voor vlaggen op mobiel */
+        /* Optimalisatie voor vlaggen op verzoek: Volledig rechthoekig en passend */
         .flag-card {
             aspect-ratio: 3 / 2;
             width: 100%;
@@ -41,13 +41,14 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            border-radius: 1rem;
+            border-radius: 0; /* Geen afgeronde hoeken */
             background: #1e293b;
+            padding: 4px; /* Kleine padding zodat de vlag de rand niet raakt als hij 'contained' is */
         }
         .flag-img {
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: contain; /* Zorgt dat de volledige vlag zichtbaar is zonder bijsnijden */
         }
     </style>
 </head>
@@ -100,7 +101,7 @@
             { nl: "De gebruiker", de: "Benutzer" }, { nl: "De admin", de: "Administrator" }, { nl: "De veiligheid", de: "Sicherheit" }, { nl: "De privacy", de: "Datenschutz" },
             { nl: "De wet", de: "Gesetz" }, { nl: "De regel", de: "Regel" }, { nl: "De richtlijn", de: "Richtlinie" }, { nl: "De standaard", de: "Standard" },
             { nl: "Het risico", de: "Risiko" }, { nl: "De verzekering", de: "Versicherung" }, { nl: "De belastingsdienst", de: "Finanzamt" }, { nl: "De douanecontrole", de: "Zollkontrolle" },
-            { nl: "De import", de: "Import" }, { nl: "De export", de: "Export" }, { nl: "De wereldhandel", de: "Welthandel" }, { nl: "De markt", de: "Markt" },
+            { nl: "De import", de: "Import" }, { nl: "De export", de: "Export" }, { nl: "De wereldhandel", de: "Welthandel" }, { nl: "De markt", de: "Market" },
             { nl: "De vraag (economisch)", de: "Nachfrage" }, { nl: "Het aanbod", de: "Angebot" }, { nl: "De consument", de: "Verbraucher" }, { nl: "De trend", de: "Trend" },
             { nl: "De innovatie", de: "Innovation" }, { nl: "De duurzaamheid", de: "Nachhaltigkeit" }, { nl: "Het milieu", de: "Umwelt" }, { nl: "De energie", de: "Energie" },
             { nl: "De kostenreductie", de: "Kostensenkung" }, { nl: "De optimalisatie", de: "Optimierung" }, { nl: "De productiviteit", de: "Produktivität" }, { nl: "De groei", de: "Wachstum" },
@@ -116,7 +117,7 @@
             { nl: "De opvolger", de: "Nachfolger" }, { nl: "De pensioenleeftijd", de: "Rentenalter" }, { nl: "De bonus", de: "Bonus" }, { nl: "De promotie", de: "Beförderung" },
             { nl: "De carriere", de: "Karriere" }, { nl: "De werk-privé balans", de: "Work-Life-Balance" }, { nl: "Het thuiskantoor", de: "Homeoffice" }, { nl: "De werktijd", de: "Arbeitzeit" },
             { nl: "De deeltijdbaan", de: "Teilzeitjob" }, { nl: "De voltijdbaan", de: "Vollzeitjob" }, { nl: "De flexibiliteit", de: "Flexibilität" }, { nl: "De betrouwbaarheid", de: "Zuverlässigkeit" },
-            { nl: "De integriteit", de: "Integrität" }, { nl: "De loyaliteit", de: "Loyaliteit" }, { nl: "De ambitie", de: "Ehrgeiz" }, { nl: "De passie", de: "Leidenschaft" }
+            { nl: "De integriteit", de: "Integrität" }, { nl: "De loyaliteit", de: "Loyalität" }, { nl: "De ambitie", de: "Ehrgeiz" }, { nl: "De passie", de: "Leidenschaft" }
         ];
 
         const Icon = ({ name, size = 24 }) => {
@@ -226,7 +227,7 @@
                     }, 800);
                 } else {
                     const failText = currentProblem.category === 'flags' 
-                        ? `Helaas, dit was de vlag van ${ans.name}` 
+                        ? `Helaas, dit was ${ans.name}` 
                         : `Helaas, dit was ${ans}`;
                     setFeedback({ type: 'error', text: failText });
                     setTimeout(() => setFeedback(null), 2500);
@@ -378,7 +379,7 @@
                             
                             <div className="grid grid-cols-2 gap-3 w-full max-w-xs mx-auto">
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o)} className="flag-card glass border-2 border-transparent active:border-emerald-500 transition-all">
+                                    <button key={i} onClick={() => handleAnswer(o)} className="flag-card glass border-2 border-slate-700 active:border-emerald-500 transition-all">
                                         <img src={o.flag} className="flag-img" alt="Vlag" />
                                     </button>
                                 ))}
