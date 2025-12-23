@@ -30,8 +30,8 @@
         }
         .app-container { height: 100vh; height: -webkit-fill-available; display: flex; flex-direction: column; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .map-img { width: 100%; height: auto; border-radius: 1rem; object-fit: contain; background: #cbd5e1; }
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .scroll-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -40,47 +40,84 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // Data voor topografie met echte afbeeldingen van Wikimedia Commons
-        const topoData = {
-            nederland: [
-                { name: 'Groningen', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Groningen_position.svg/400px-Groningen_position.svg.png' },
-                { name: 'Friesland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Friesland_position.svg/400px-Friesland_position.svg.png' },
-                { name: 'Drenthe', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Drenthe_position.svg/400px-Drenthe_position.svg.png' },
-                { name: 'Overijssel', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Overijssel_position.svg/400px-Overijssel_position.svg.png' },
-                { name: 'Flevoland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Flevoland_position.svg/400px-Flevoland_position.svg.png' },
-                { name: 'Gelderland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Gelderland_position.svg/400px-Gelderland_position.svg.png' },
-                { name: 'Utrecht', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Utrecht_position.svg/400px-Utrecht_position.svg.png' },
-                { name: 'Noord-Holland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Noord-Holland_position.svg/400px-Noord-Holland_position.svg.png' },
-                { name: 'Zuid-Holland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Zuid-Holland_position.svg/400px-Zuid-Holland_position.svg.png' },
-                { name: 'Zeeland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Zeeland_position.svg/400px-Zeeland_position.svg.png' },
-                { name: 'Noord-Brabant', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Noord-Brabant_position.svg/400px-Noord-Brabant_position.svg.png' },
-                { name: 'Limburg', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Limburg_position.svg/400px-Limburg_position.svg.png' }
-            ],
-            europa: [
-                { name: 'Frankrijk', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/EU-France.svg/400px-EU-France.svg.png' },
-                { name: 'Duitsland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/EU-Germany.svg/400px-EU-Germany.svg.png' },
-                { name: 'Italië', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/EU-Italy.svg/400px-EU-Italy.svg.png' },
-                { name: 'Spanje', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/EU-Spain.svg/400px-EU-Spain.svg.png' },
-                { name: 'Polen', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/EU-Poland.svg/400px-EU-Poland.svg.png' },
-                { name: 'Portugal', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/EU-Portugal.svg/400px-EU-Portugal.svg.png' },
-                { name: 'Griekenland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/EU-Greece.svg/400px-EU-Greece.svg.png' },
-                { name: 'Zweden', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/EU-Sweden.svg/400px-EU-Sweden.svg.png' },
-                { name: 'Noorwegen', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Norway_in_Europe.svg/400px-Norway_in_Europe.svg.png' },
-                { name: 'Finland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/EU-Finland.svg/400px-EU-Finland.svg.png' },
-                { name: 'Oostenrijk', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/EU-Austria.svg/400px-EU-Austria.svg.png' },
-                { name: 'België', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/EU-Belgium.svg/400px-EU-Belgium.svg.png' }
-            ]
-        };
+        // Uitgebreide lijst met 200+ Duitse woorden voor Lidl kantoorwerk
+        const germanLidlWords = [
+            // Algemeen Kantoor
+            { nl: "De vergadering", de: "Besprechung" }, { nl: "De afspraak", de: "Termin" }, { nl: "De collega", de: "Kollege" }, { nl: "De afdeling", de: "Abteilung" },
+            { nl: "Het kantoor", de: "Büro" }, { nl: "De e-mail", de: "E-Mail" }, { nl: "De bijlage", de: "Anhang" }, { nl: "Het verslag", de: "Protokoll" },
+            { nl: "De deadline", de: "Frist" }, { nl: "De opdracht", de: "Auftrag" }, { nl: "De planning", de: "Planung" }, { nl: "De strategie", de: "Strategie" },
+            { nl: "De doelstelling", de: "Zielsetzung" }, { nl: "Het project", de: "Projekt" }, { nl: "De feedback", de: "Rückmeldung" }, { nl: "De presentatie", de: "Präsentation" },
+            
+            // Inkoop & Assortiment
+            { nl: "De inkoop", de: "Einkauf" }, { nl: "De leverancier", de: "Lieferant" }, { nl: "De onderhandeling", de: "Verhandlung" }, { nl: "De prijs", de: "Preis" },
+            { nl: "De korting", de: "Rabatt" }, { nl: "Het contract", de: "Vertrag" }, { nl: "De kwaliteit", de: "Qualität" }, { nl: "Het monster (product)", de: "Muster" },
+            { nl: "De verpakking", de: "Verpackung" }, { nl: "Het assortiment", de: "Sortiment" }, { nl: "De houdbaarheid", de: "Haltbarkeit" }, { nl: "De voorraad", de: "Lagerbestand" },
+            { nl: "De bestelling", de: "Bestellung" }, { nl: "De levering", de: "Lieferung" }, { nl: "De vrachtbrief", de: "Frachtbrief" }, { nl: "De douane", de: "Zoll" },
+            
+            // Logistiek & Supply Chain
+            { nl: "De logistiek", de: "Logistik" }, { nl: "Het distributiecentrum", de: "Zentrallager" }, { nl: "De transportketen", de: "Lieferkette" }, { nl: "De vrachtwagen", de: "LKW" },
+            { nl: "De verzending", de: "Versand" }, { nl: "De opslag", de: "Lagerung" }, { nl: "Het magazijn", de: "Lager" }, { nl: "De pallet", de: "Palette" },
+            { nl: "De inventarisatie", de: "Inventur" }, { nl: "De routeplanning", de: "Tourenplanung" }, { nl: "De vertraging", de: "Verzögerung" }, { nl: "De capaciteit", de: "Kapazität" },
+            
+            // Financiën & Administratie
+            { nl: "De boekhouding", de: "Buchhaltung" }, { nl: "De factuur", de: "Rechnung" }, { nl: "De betaling", de: "Zahlung" }, { nl: "De winst", de: "Gewinn" },
+            { nl: "Het verlies", de: "Verlust" }, { nl: "De omzet", de: "Umsatz" }, { nl: "De begroting", de: "Budget" }, { nl: "De belastingen", de: "Steuern" },
+            { nl: "Het bankrekeningnummer", de: "Kontonummer" }, { nl: "De onkosten", de: "Ausgaben" }, { nl: "De analyse", de: "Analyse" }, { nl: "Het rapport", de: "Bericht" },
+            
+            // IT & Techniek
+            { nl: "De software", de: "Software" }, { nl: "De hardware", de: "Hardware" }, { nl: "De database", de: "Datenbank" }, { nl: "Het wachtwoord", de: "Passwort" },
+            { nl: "De verbinding", de: "Verbindung" }, { nl: "De systeembeheerder", de: "Systemadministrator" }, { nl: "De update", de: "Aktualisierung" }, { nl: "De storing", de: "Störung" },
+            { nl: "De laptop", de: "Laptop" }, { nl: "Het scherm", de: "Bildschirm" }, { nl: "De muis", de: "Maus" }, { nl: "Het toetsenbord", de: "Tastatur" },
+            
+            // Human Resources (HR)
+            { nl: "De sollicitatie", de: "Bewerbung" }, { nl: "Het interview", de: "Vorstellungsgespräch" }, { nl: "De werknemer", de: "Arbeitnehmer" }, { nl: "De werkgever", de: "Arbeitgeber" },
+            { nl: "Het salaris", de: "Gehalt" }, { nl: "De vakantie", de: "Urlaub" }, { nl: "De ziekte", de: "Krankheit" }, { nl: "De opleiding", de: "Fortbildung" },
+            { nl: "De overwerkuren", de: "Überstunden" }, { nl: "De ontslagname", de: "Kündigung" }, { nl: "Het team", de: "Team" }, { nl: "De motivatie", de: "Motivation" },
+            
+            // Marketing & Communicatie
+            { nl: "De reclame", de: "Werbung" }, { nl: "De folder", de: "Prospekt" }, { nl: "De klant", de: "Kunde" }, { nl: "De doelgroep", de: "Zielgruppe" },
+            { nl: "De concurrentie", de: "Wettbewerb" }, { nl: "Het merk", de: "Marke" }, { nl: "De campagne", de: "Kampagne" }, { nl: "De website", de: "Webseite" },
+            { nl: "De social media", de: "Soziale Medien" }, { nl: "De nieuwsbrief", de: "Newsletter" }, { nl: "Het logo", de: "Logo" }, { nl: "Het imago", de: "Image" },
 
-        const germanLidlData = [
-            { nl: "Wil je de kassabon mee?", de: "Möchten Sie den Kassenbon?" },
-            { nl: "Heeft u een klantenkaart?", de: "Haben Sie een klantenkaart?" },
-            { nl: "Dat is dan €12,50.", de: "Das macht dan twaalf euro vijftig." },
-            { nl: "Helaas, dit product is uitverkocht.", de: "Leider ist dieses Produkt uitverkocht." },
-            { nl: "De statiegeldautomaat is daar.", de: "Der Pfandautomat ist dort drüben." },
-            { nl: "Alstublieft, uw wisselgeld.", de: "Bitte sehr, Ihr Wechselgeld." },
-            { nl: "Wilt u een tasje erbij?", de: "Möchten Sie eine Tüte dazu?" },
-            { nl: "Fijne avond nog!", de: "Schönen Feierabend noch!" }
+            // Vastgoed & Expansie
+            { nl: "De locatie", de: "Standort" }, { nl: "De huur", de: "Miete" }, { nl: "De bouw", de: "Bau" }, { nl: "De vergunning", de: "Genehmigung" },
+            { nl: "De renovatie", de: "Renovierung" }, { nl: "Het terrein", de: "Gelände" }, { nl: "De architect", de: "Architekt" }, { nl: "De parkeerplaats", de: "Parkplatz" },
+            
+            // Meer kantoortermen (om de 200 te halen)
+            { nl: "Het bureau", de: "Schreibtisch" }, { nl: "De stoel", de: "Stuhl" }, { nl: "De koffie", de: "Kaffee" }, { nl: "De lunchpauze", de: "Mittagspause" },
+            { nl: "De telefoon", de: "Telefon" }, { nl: "De printer", de: "Drucker" }, { nl: "Het papier", de: "Papier" }, { nl: "De map", de: "Ordner" },
+            { nl: "De pen", de: "Stift" }, { nl: "Het notitieblok", de: "Notizblock" }, { nl: "De agenda", de: "Kalender" }, { nl: "De klok", de: "Uhr" },
+            { nl: "De lift", de: "Aufzug" }, { nl: "De trap", de: "Treppe" }, { nl: "De gang", de: "Flur" }, { nl: "De ingang", de: "Eingang" },
+            { nl: "De uitgang", de: "Ausgang" }, { nl: "De vergaderruimte", de: "Besprechungsraum" }, { nl: "De receptie", de: "Empfang" }, { nl: "De sleutel", de: "Schlüssel" },
+            { nl: "De pas", de: "Ausweis" }, { nl: "De manager", de: "Leiter" }, { nl: "De chef", de: "Vorgesetzter" }, { nl: "De assistent", de: "Assistent" },
+            { nl: "De stagiair", de: "Praktikant" }, { nl: "De samenwerking", de: "Zusammenarbeit" }, { nl: "Het succes", de: "Erfolg" }, { nl: "Het probleem", de: "Problem" },
+            { nl: "De oplossing", de: "Lösung" }, { nl: "De vraag", de: "Frage" }, { nl: "Het antwoord", de: "Antwort" }, { nl: "De discussie", de: "Diskussion" },
+            { nl: "De beslissing", de: "Entscheidung" }, { nl: "De verandering", de: "Veränderung" }, { nl: "De verbetering", de: "Verbesserung" }, { nl: "De controle", de: "Kontrolle" },
+            { nl: "De taak", de: "Aufgabe" }, { nl: "De verantwoordelijkheid", de: "Verantwortung" }, { nl: "De ervaring", de: "Erfahrung" }, { nl: "De kennis", de: "Wissen" },
+            { nl: "De vaardigheid", de: "Fähigkeit" }, { nl: "Het proces", de: "Prozess" }, { nl: "De structuur", de: "Struktur" }, { nl: "De efficiëntie", de: "Effizienz" },
+            { nl: "De documentatie", de: "Dokumentation" }, { nl: "Het bestand", de: "Datei" }, { nl: "De map (digitaal)", de: "Verzeichnis" }, { nl: "De cloud", de: "Cloud" },
+            { nl: "De backup", de: "Sicherung" }, { nl: "De browser", de: "Browser" }, { nl: "De link", de: "Link" }, { nl: "De download", de: "Download" },
+            { nl: "De upload", de: "Upload" }, { nl: "De installatie", de: "Installation" }, { nl: "De configuratie", de: "Konfiguration" }, { nl: "De interface", de: "Schnittstelle" },
+            { nl: "De gebruiker", de: "Benutzer" }, { nl: "De admin", de: "Administrator" }, { nl: "De veiligheid", de: "Sicherheit" }, { nl: "De privacy", de: "Datenschutz" },
+            { nl: "De wet", de: "Gesetz" }, { nl: "De regel", de: "Regel" }, { nl: "De richtlijn", de: "Richtlinie" }, { nl: "De standaard", de: "Standard" },
+            { nl: "Het risico", de: "Risiko" }, { nl: "De verzekering", de: "Versicherung" }, { nl: "De belastingsdienst", de: "Finanzamt" }, { nl: "De douanecontrole", de: "Zollkontrolle" },
+            { nl: "De import", de: "Import" }, { nl: "De export", de: "Export" }, { nl: "De wereldhandel", de: "Welthandel" }, { nl: "De markt", de: "Markt" },
+            { nl: "De vraag (economisch)", de: "Nachfrage" }, { nl: "Het aanbod", de: "Angebot" }, { nl: "De consument", de: "Verbraucher" }, { nl: "De trend", de: "Trend" },
+            { nl: "De innovatie", de: "Innovation" }, { nl: "De duurzaamheid", de: "Nachhaltigkeit" }, { nl: "Het milieu", de: "Umwelt" }, { nl: "De energie", de: "Energie" },
+            { nl: "De kostenreductie", de: "Kostensenkung" }, { nl: "De optimalisatie", de: "Optimierung" }, { nl: "De productiviteit", de: "Produktivität" }, { nl: "De groei", de: "Wachstum" },
+            { nl: "De investering", de: "Investition" }, { nl: "Het kapitaal", de: "Kapital" }, { nl: "De aandeelhouder", de: "Aktionär" }, { nl: "De jaarcijfers", de: "Jahresabschluss" },
+            { nl: "De audit", de: "Prüfung" }, { nl: "De compliance", de: "Einhaltung" }, { nl: "De ethiek", de: "Ethik" }, { nl: "De cultuur", de: "Kultur" },
+            { nl: "De visie", de: "Vision" }, { nl: "De missie", de: "Mission" }, { nl: "De kernwaarde", de: "Kernwert" }, { nl: "De samenleving", de: "Gesellschaft" },
+            { nl: "De globalisering", de: "Globalisierung" }, { nl: "De digitalisering", de: "Digitalisierung" }, { nl: "De automatisering", de: "Automatisierung" }, { nl: "De robotica", de: "Robotik" },
+            { nl: "De data-analyse", de: "Datenanalyse" }, { nl: "De statistiek", de: "Statistik" }, { nl: "De grafiek", de: "Grafik" }, { nl: "De tabel", de: "Tabelle" },
+            { nl: "De berekening", de: "Berechnung" }, { nl: "De schatting", de: "Schätzung" }, { nl: "Het budgetplan", de: "Haushaltsplan" }, { nl: "De prognose", de: "Prognose" },
+            { nl: "De herstructurering", de: "Umstrukturierung" }, { nl: "De fusie", de: "Fusion" }, { nl: "De overname", de: "Übernahme" }, { nl: "De partner", de: "Partner" },
+            { nl: "Het netwerk", de: "Netzwerk" }, { nl: "De connectie", de: "Verbindung" }, { nl: "De dialoog", de: "Dialog" }, { nl: "Het overleg", de: "Beratung" },
+            { nl: "De workshop", de: "Workshop" }, { nl: "De training", de: "Training" }, { nl: "De coaching", de: "Coaching" }, { nl: "De mentor", de: "Mentor" },
+            { nl: "De opvolger", de: "Nachfolger" }, { nl: "De pensioenleeftijd", de: "Rentenalter" }, { nl: "De bonus", de: "Bonus" }, { nl: "De promotie", de: "Beförderung" },
+            { nl: "De carriere", de: "Karriere" }, { nl: "De werk-privé balans", de: "Work-Life-Balance" }, { nl: "Het thuiskantoor", de: "Homeoffice" }, { nl: "De werktijd", de: "Arbeitszeit" },
+            { nl: "De deeltijdbaan", de: "Teilzeitjob" }, { nl: "De voltijdbaan", de: "Vollzeitjob" }, { nl: "De flexibiliteit", de: "Flexibilität" }, { nl: "De betrouwbaarheid", de: "Zuverlässigkeit" },
+            { nl: "De integriteit", de: "Integrität" }, { nl: "De loyaliteit", de: "Loyalität" }, { nl: "De ambitie", de: "Ehrgeiz" }, { nl: "De passie", de: "Leidenschaft" }
         ];
 
         const Icon = ({ name, size = 24 }) => {
@@ -111,7 +148,10 @@
             const [countries, setCountries] = useState([]);
             const [currentProblem, setCurrentProblem] = useState(null);
 
-            useEffect(() => { localStorage.setItem('myrthe_score', score); localStorage.setItem('myrthe_level', mathLevel); }, [score, mathLevel]);
+            useEffect(() => { 
+                localStorage.setItem('myrthe_score', score); 
+                localStorage.setItem('myrthe_level', mathLevel); 
+            }, [score, mathLevel]);
 
             useEffect(() => {
                 fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags')
@@ -122,7 +162,8 @@
                             flag: c.flags.svg || c.flags.png 
                         })).filter(c => c.name && c.flag);
                         setCountries(list);
-                    });
+                    })
+                    .catch(() => {});
             }, []);
 
             const generateMath = useCallback(() => {
@@ -155,24 +196,11 @@
                 setView('flag-game');
             }, [countries]);
 
-            const generateTopo = (cat) => {
-                const pool = topoData[cat];
-                const correct = pool[Math.floor(Math.random() * pool.length)];
-                let opts = [correct.name];
-                while(opts.length < 4) {
-                    const r = pool[Math.floor(Math.random() * pool.length)].name;
-                    if(!opts.includes(r)) opts.push(r);
-                }
-                setCurrentProblem({ ...correct, opts: opts.sort(() => Math.random() - 0.5), category: cat });
-                setFeedback(null);
-                setView('topo-game');
-            };
-
             const generateGerman = () => {
-                const correct = germanLidlData[Math.floor(Math.random() * germanLidlData.length)];
+                const correct = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)];
                 let opts = [correct.de];
                 while(opts.length < 4) {
-                    const r = germanLidlData[Math.floor(Math.random() * germanLidlData.length)].de;
+                    const r = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)].de;
                     if(!opts.includes(r)) opts.push(r);
                 }
                 setCurrentProblem({ ...correct, opts: opts.sort(() => Math.random() - 0.5), category: 'german' });
@@ -184,19 +212,17 @@
                 let isCorrect = false;
                 if (currentProblem.category === 'german') isCorrect = currentProblem.de === ans;
                 else if (currentProblem.category === 'flags') isCorrect = currentProblem.a === ans;
-                else isCorrect = currentProblem.name === ans;
 
                 if (isCorrect) {
                     setScore(s => s + 5);
-                    setFeedback({ type: 'success', text: 'Top! 🌟' });
+                    setFeedback({ type: 'success', text: 'Heel goed! 🌟' });
                     setTimeout(() => {
                         if (currentProblem.category === 'german') generateGerman();
                         else if (currentProblem.category === 'flags') generateFlag();
-                        else generateTopo(currentProblem.category);
                     }, 800);
                 } else {
-                    const correctVal = currentProblem.de || currentProblem.name || currentProblem.a;
-                    setFeedback({ type: 'error', text: `Helaas! Het was ${correctVal}` });
+                    const correctVal = currentProblem.de || currentProblem.a;
+                    setFeedback({ type: 'error', text: `Helaas! Het was: ${correctVal}` });
                     setTimeout(() => setFeedback(null), 2000);
                 }
             };
@@ -218,22 +244,27 @@
                 return (
                     <div className="app-container flex flex-col items-center justify-center p-6 text-center">
                         <h1 className="text-4xl font-black italic uppercase mb-8 tracking-tighter">Myrthe's<br/>Oefenmeester</h1>
-                        <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                            <button onClick={() => setView('math-setup')} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
-                                <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg"><Icon name="calculator" /></div>
-                                <span className="text-sm font-bold">Rekenen</span>
+                        <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
+                            <button onClick={() => setView('math-setup')} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
+                                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" /></div>
+                                <div className="text-left">
+                                    <span className="block text-lg font-bold">Rekenen</span>
+                                    <span className="text-[10px] uppercase text-slate-400">Plus, min, keer & gedeeld</span>
+                                </div>
                             </button>
-                            <button onClick={generateFlag} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
-                                <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg"><Icon name="flag" /></div>
-                                <span className="text-sm font-bold">Vlaggen</span>
+                            <button onClick={generateFlag} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
+                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" /></div>
+                                <div className="text-left">
+                                    <span className="block text-lg font-bold">Vlaggen</span>
+                                    <span className="text-[10px] uppercase text-slate-400">Landen herkennen</span>
+                                </div>
                             </button>
-                            <button onClick={() => setView('topo-menu')} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
-                                <div className="bg-amber-600 p-3 rounded-2xl shadow-lg"><Icon name="map" /></div>
-                                <span className="text-sm font-bold">Topo</span>
-                            </button>
-                            <button onClick={generateGerman} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
-                                <div className="bg-rose-600 p-3 rounded-2xl shadow-lg"><Icon name="languages" /></div>
-                                <span className="text-sm font-bold">Duits</span>
+                            <button onClick={generateGerman} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
+                                <div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="briefcase" /></div>
+                                <div className="text-left">
+                                    <span className="block text-lg font-bold">Lidl Duits (Kantoor)</span>
+                                    <span className="text-[10px] uppercase text-slate-400">200+ woorden kantoorwerk</span>
+                                </div>
                             </button>
                         </div>
                     </div>
@@ -245,7 +276,7 @@
                     <div className="app-container">
                         <Header title="Instellingen" onBack={() => setView('menu')} />
                         <div className="p-8 flex flex-col gap-4">
-                            <h3 className="text-xl font-black italic uppercase">Wat gaan we doen?</h3>
+                            <h3 className="text-xl font-black italic uppercase">Kies je sommen:</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 {['plus', 'min', 'keer', 'gedeeld'].map(t => (
                                     <button key={t} onClick={() => setSelectedTypes(p => ({...p, [t]: !p[t]}))} className={`p-6 rounded-3xl border-2 transition-all font-black uppercase text-[10px] ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400' : 'bg-slate-900 border-transparent opacity-40'}`}>
@@ -326,57 +357,18 @@
                 );
             }
 
-            if (view === 'topo-menu') {
-                return (
-                    <div className="app-container">
-                        <Header title="Topografie" onBack={() => setView('menu')} />
-                        <div className="p-8 flex flex-col gap-4 justify-center flex-1">
-                            <button onClick={() => generateTopo('nederland')} className="glass p-6 rounded-3xl text-left border-l-4 border-amber-500">
-                                <b className="block text-lg">Nederland</b>
-                                <span className="text-[10px] text-slate-500 font-black uppercase">Provincies</span>
-                            </button>
-                            <button onClick={() => generateTopo('europa')} className="glass p-6 rounded-3xl text-left border-l-4 border-emerald-500">
-                                <b className="block text-lg">Europa</b>
-                                <span className="text-[10px] text-slate-500 font-black uppercase">Landen</span>
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (view === 'topo-game') {
-                return (
-                    <div className="app-container">
-                        <Header title="Topografie" onBack={() => setView('topo-menu')} />
-                        <div className="flex-1 flex flex-col p-6 items-center gap-6 overflow-y-auto">
-                            <div className="w-full max-w-[320px] p-2 bg-white rounded-2xl">
-                                <img src={currentProblem.img} className="map-img" alt="Kaart" />
-                            </div>
-                            <div className="text-center font-black uppercase text-xs tracking-widest text-slate-500 italic">Welk gebied is rood gemarkeerd?</div>
-                            <div className="grid grid-cols-1 gap-2 w-full max-w-xs">
-                                {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-4 rounded-2xl font-bold active:bg-white/10">
-                                        {o}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="h-10 text-sm font-black uppercase">
-                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
             if (view === 'german-game') {
                 return (
                     <div className="app-container">
-                        <Header title="Lidl Duits" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col p-8 items-center justify-center gap-8 text-center">
-                            <h2 className="text-2xl font-black italic">{currentProblem.nl}</h2>
-                            <div className="grid grid-cols-1 gap-3 w-full">
+                        <Header title="Lidl Duits (Kantoor)" onBack={() => setView('menu')} />
+                        <div className="flex-1 flex flex-col p-8 items-center justify-center gap-8 text-center scroll-hide overflow-y-auto">
+                            <div className="flex flex-col gap-2">
+                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Wat is het Duitse woord voor:</span>
+                                <h2 className="text-3xl font-black italic">{currentProblem.nl}</h2>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-5 rounded-2xl font-bold text-sm">
+                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-5 rounded-2xl font-bold text-base active:bg-rose-600/20 active:border-rose-500 transition-all">
                                         {o}
                                     </button>
                                 ))}
