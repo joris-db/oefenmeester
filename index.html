@@ -10,7 +10,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     
-    <!-- Icoon Koppeling -->
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
 
@@ -34,20 +33,21 @@
         .full-h { height: 100vh; height: -webkit-fill-available; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
         
-        /* De vaste footer onderaan */
+        /* De vaste footer die het toetsenbord omhoog duwt */
         .app-footer {
-            height: calc(30px + env(safe-area-inset-bottom, 20px));
+            height: calc(40px + env(safe-area-inset-bottom, 20px));
             padding-bottom: env(safe-area-inset-bottom, 20px);
             display: flex;
             align-items: center;
             justify-content: center;
             background: #1e293b;
-            color: #475569;
-            font-size: 0.7rem;
-            font-weight: 800;
+            color: #64748b;
+            font-size: 0.75rem;
+            font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.1rem;
+            letter-spacing: 0.15rem;
             width: 100%;
+            border-t: 1px solid rgba(255,255,255,0.05);
         }
 
         #root:empty::before {
@@ -96,14 +96,17 @@
                             flag: c.flags.svg || c.flags.png 
                         })).filter(c => c.name && c.flag);
                         setCountries(list);
-                    });
+                    })
+                    .catch(err => console.error("Fout bij laden landen:", err));
             }, []);
 
             const generateMath = useCallback(() => {
                 const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
-                const type = ops[Math.floor(Math.random() * ops.length)] || 'plus';
+                // Als er niks geselecteerd is, val terug op plus
+                const type = ops.length > 0 ? ops[Math.floor(Math.random() * ops.length)] : 'plus';
+                
                 let n1, n2, q, a;
-                const range = mathLevel * 5;
+                const range = mathLevel * 8; // Iets uitdagender maken per level
 
                 if (type === 'plus') {
                     n1 = Math.floor(Math.random() * range) + 1;
@@ -114,11 +117,11 @@
                     n2 = Math.floor(Math.random() * n1);
                     q = `${n1} - ${n2}`; a = n1 - n2;
                 } else if (type === 'keer') {
-                    n1 = Math.floor(Math.random() * Math.min(mathLevel + 2, 12)) + 1;
+                    n1 = Math.floor(Math.random() * 10) + 1;
                     n2 = Math.floor(Math.random() * 10) + 1;
                     q = `${n1} × ${n2}`; a = n1 * n2;
                 } else {
-                    n2 = Math.floor(Math.random() * Math.min(mathLevel + 2, 10)) + 1;
+                    n2 = Math.floor(Math.random() * 9) + 2;
                     a = Math.floor(Math.random() * 10) + 1;
                     n1 = n2 * a;
                     q = `${n1} : ${n2}`;
@@ -161,6 +164,7 @@
                                     </div>
                                 </button>
                                 <button onClick={() => { 
+                                    if(countries.length === 0) return;
                                     setView('flags'); 
                                     const correct = countries[Math.floor(Math.random() * countries.length)];
                                     let opts = [correct];
@@ -199,7 +203,7 @@
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={() => { setView('math-game'); generateMath(); }} className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black text-xl active:scale-95 transition-all shadow-2xl shadow-indigo-500/30">
+                            <button onClick={() => { generateMath(); setView('math-game'); }} className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black text-xl active:scale-95 transition-all shadow-2xl shadow-indigo-500/30">
                                 STARTEN
                             </button>
                         </div>
@@ -230,7 +234,7 @@
                                         if(b === 'OK') { if(userAnswer) checkMath(); }
                                         else if(b === 'C') setUserAnswer('');
                                         else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                    }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800 border border-white/5'}`}>{b}</button>
+                                    }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 border border-white/5'}`}>{b}</button>
                                 ))}
                             </div>
                         </div>
@@ -259,7 +263,7 @@
                         <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
                             <div className="space-y-2">
                                 <p className="text-slate-500 font-bold text-[10px] tracking-widest uppercase">Welk land is dit?</p>
-                                <h2 className="text-4xl font-black italic uppercase leading-none">{flagProblem?.q}</h2>
+                                <h2 className="text-4xl font-black italic uppercase leading-tight">{flagProblem?.q}</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                                 {flagProblem?.opts.map((o, i) => (
@@ -270,7 +274,7 @@
                                             setFeedback("Helaas! ❌"); setTimeout(() => setFeedback(null), 800);
                                         }
                                     }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 border border-white/10 overflow-hidden shadow-2xl">
-                                        <img src={o.flag} className="w-full h-full object-cover rounded-2xl shadow-sm" alt="Vlag" />
+                                        <img src={o.flag} className="w-full h-full object-cover rounded-2xl" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
