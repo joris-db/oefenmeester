@@ -14,11 +14,12 @@
     <!-- Koppeling naar het manifest bestand -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- Webpushr SDK -->
+    <!-- start webpushr code -->
     <script>
         (function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
-        webpushr('setup',{'key':'BClbuKfGvW_YpXi7mujJa7vKZf2hc0ZMV6jYHmcxcr-qJbMZ6EIrqLHWOK7naVtm85Neoxh7mEXGaHQoIldUTOM' });
+        webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });
     </script>
+    <!-- end webpushr code -->
 
     <!-- UI Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -113,10 +114,10 @@
                 if (parseInt(userAnswer) === mathProblem.a) {
                     setFeedback("Goed zo! ✨");
                     setScore(s => s + 1);
-                    setTimeout(generateMath, 1000);
+                    setTimeout(generateMath, 800);
                 } else {
                     setFeedback("Probeer het nog eens! ❌");
-                    setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 1000);
+                    setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 800);
                 }
             };
 
@@ -124,10 +125,10 @@
                 if (chosenName === flagProblem.a) {
                     setFeedback("Helemaal goed! 🌍");
                     setScore(s => s + 1);
-                    setTimeout(generateFlag, 1000);
+                    setTimeout(generateFlag, 800);
                 } else {
                     setFeedback("Helaas, dat is 'm niet! ❌");
-                    setTimeout(() => setFeedback(null), 1000);
+                    setTimeout(() => setFeedback(null), 800);
                 }
             };
 
