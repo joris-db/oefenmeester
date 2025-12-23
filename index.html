@@ -32,11 +32,6 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .scroll-hide::-webkit-scrollbar { display: none; }
-        
-        .flag-contain {
-            object-fit: contain;
-            background-color: rgba(0,0,0,0.2);
-        }
     </style>
 </head>
 <body>
@@ -132,26 +127,12 @@
             const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
             const [userAnswer, setUserAnswer] = useState('');
             const [feedback, setFeedback] = useState(null);
-            const [countries, setCountries] = useState([]);
             const [currentProblem, setCurrentProblem] = useState(null);
 
             useEffect(() => { 
                 localStorage.setItem('myrthe_score', score); 
                 localStorage.setItem('myrthe_level', mathLevel); 
             }, [score, mathLevel]);
-
-            useEffect(() => {
-                fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags')
-                    .then(res => res.json())
-                    .then(data => {
-                        const list = data.map(c => ({ 
-                            name: c.translations?.nld?.common || c.name.common, 
-                            flag: c.flags.svg || c.flags.png 
-                        })).filter(c => c.name && c.flag);
-                        setCountries(list);
-                    })
-                    .catch(() => {});
-            }, []);
 
             const generateMath = useCallback(() => {
                 const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
@@ -170,19 +151,6 @@
                 setView('math-game');
             }, [selectedTypes, mathLevel]);
 
-            const generateFlag = useCallback(() => {
-                if (countries.length < 4) return;
-                const correct = countries[Math.floor(Math.random() * countries.length)];
-                let opts = [correct];
-                while(opts.length < 4) {
-                    const r = countries[Math.floor(Math.random() * countries.length)];
-                    if(!opts.find(o => o.name === r.name)) opts.push(r);
-                }
-                setCurrentProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5), category: 'flags', flag: correct.flag });
-                setFeedback(null);
-                setView('flag-game');
-            }, [countries]);
-
             const generateGerman = () => {
                 const correct = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)];
                 let opts = [correct.de];
@@ -196,18 +164,13 @@
             };
 
             const handleAnswer = (ans) => {
-                if (feedback) return; // Voorkom dubbel klikken tijdens feedback
+                if (feedback) return;
 
                 let isCorrect = false;
-                let clickedName = "";
+                let clickedName = ans;
                 
                 if (currentProblem.category === 'german') {
                     isCorrect = currentProblem.de === ans;
-                    clickedName = ans;
-                } else if (currentProblem.category === 'flags') {
-                    // ans is het object {name, flag}
-                    isCorrect = currentProblem.a === ans.name;
-                    clickedName = ans.name;
                 }
 
                 if (isCorrect) {
@@ -215,10 +178,8 @@
                     setFeedback({ type: 'success', text: 'Heel goed! 🌟' });
                     setTimeout(() => {
                         if (currentProblem.category === 'german') generateGerman();
-                        else if (currentProblem.category === 'flags') generateFlag();
                     }, 800);
                 } else {
-                    // Hier tonen we expliciet de naam van de vlag die gekozen is
                     setFeedback({ type: 'error', text: `Helaas, dit was ${clickedName}` });
                     setTimeout(() => setFeedback(null), 2000);
                 }
@@ -247,13 +208,6 @@
                                 <div className="text-left">
                                     <span className="block text-lg font-bold">Rekenen</span>
                                     <span className="text-[10px] uppercase text-slate-400">Plus, min, keer & gedeeld</span>
-                                </div>
-                            </button>
-                            <button onClick={generateFlag} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" /></div>
-                                <div className="text-left">
-                                    <span className="block text-lg font-bold">Vlaggen</span>
-                                    <span className="text-[10px] uppercase text-slate-400">Landen herkennen</span>
                                 </div>
                             </button>
                             <button onClick={generateGerman} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
@@ -327,35 +281,6 @@
                                         {b}
                                     </button>
                                 ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (view === 'flag-game') {
-                return (
-                    <div className="app-container">
-                        <Header title="Vlaggen" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 gap-4 sm:gap-6 text-center overflow-y-auto">
-                            <h2 className="text-2xl sm:text-3xl font-black italic uppercase text-emerald-400 leading-tight mb-2">Waar is {currentProblem.q}?</h2>
-                            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-md">
-                                {currentProblem.opts.map((o, i) => (
-                                    <button 
-                                        key={i} 
-                                        onClick={() => handleAnswer(o)} 
-                                        className="glass p-2 sm:p-3 rounded-2xl flex items-center justify-center aspect-[4/3] active:scale-95 transition-all overflow-hidden"
-                                    >
-                                        <img 
-                                            src={o.flag} 
-                                            className="flag-contain w-full h-full rounded-lg" 
-                                            alt={`Vlag van ${o.name}`} 
-                                        />
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="h-10 text-sm font-black uppercase mt-2">
-                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
                     </div>
