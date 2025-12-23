@@ -13,11 +13,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- Inline Web App Manifest (Nodig voor iOS Push) -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"Myrthes Oefenmeester","short_name":"Oefenmeester","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#020617","icons":[{"src":"https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png","sizes":"512x512","type":"image/png"}]}'>
 
     <!-- start webpushr tracking code --> 
-    <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.src = "https://cdn.webpushr.com/app.min.js";
-    fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk-alternative'));
-    webpushr('init','BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw','https://joris-db.github.io/oefenmeester/webpushr-sw.js','/oefenmeester/');</script>
+    <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";
+    fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
+    webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });</script>
     <!-- end webpushr tracking code -->
     
     <!-- Scripts -->
@@ -77,6 +81,14 @@
 
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
+
+        // Service Worker Registratie voor iOS Push
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('data:text/javascript;base64,c2VsZixhZGRFdmVudExpc3RlbmVyKCdwdXNoJyxmdW5jdGlvbihlKXtjb25zdCBkPWUuZGF0YS5qc29uKCk7ZS53YWl0VW50aWwoc2VsZi5yZWdpc3RyYXRpb24uc2hvd05vdGlmaWNhdGlvbihkLnRpdGxlLGQpKTt9KTs=')
+                .catch(err => console.log('SW registration failed:', err));
+            });
+        }
 
         const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
