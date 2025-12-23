@@ -5,14 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Myrthe's Oefenmeester</title>
 
-    <!-- Apple PWA Tags -->
+    <!-- PWA & Mobile Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     
-    <link rel="apple-touch-icon" href="icon.png">
-    <link rel="manifest" href="manifest.json">
-
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -21,40 +17,47 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
+        :root {
+            --slate-950: #020617;
+            --slate-900: #0f172a;
+        }
         body { 
-            background-color: #0f172a; 
+            background-color: var(--slate-950); 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            overflow: hidden; 
-            -webkit-tap-highlight-color: transparent; 
-            user-select: none; 
             margin: 0;
             height: 100vh;
+            height: -webkit-fill-available;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            color: white;
         }
-        .full-h { height: 100vh; height: -webkit-fill-available; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        
-        /* De vaste footer die het toetsenbord omhoog duwt */
-        .app-footer {
-            height: calc(45px + env(safe-area-inset-bottom, 20px));
-            padding-bottom: env(safe-area-inset-bottom, 20px);
+        .app-container {
+            height: 100vh;
+            height: -webkit-fill-available;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #1e293b;
-            color: #64748b;
-            font-size: 0.8rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.2rem;
-            width: 100%;
-            border-top: 2px solid rgba(255,255,255,0.05);
-            flex-shrink: 0;
+            flex-direction: column;
         }
-
-        #root:empty::before {
-            content: 'Laden... ✨';
-            display: flex; align-items: center; justify-content: center;
-            height: 100vh; color: white; font-weight: bold; font-size: 1.5rem;
+        .glass { 
+            background: rgba(30, 41, 59, 0.7); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1); 
+        }
+        .numpad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+        .pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .feedback-slide { animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -62,30 +65,49 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useCallback, useRef } = React;
 
+        // Verbeterde Icon helper die direct de Lucide library aanspreekt zonder render-conclicten
         const Icon = ({ name, size = 24, className = "" }) => {
-            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+            const iconRef = useRef(null);
+
+            useEffect(() => {
+                if (window.lucide && iconRef.current) {
+                    iconRef.current.innerHTML = ''; // Clear previous
+                    const iconElement = document.createElement('i');
+                    iconElement.setAttribute('data-lucide', name);
+                    if (className) iconElement.className = className;
+                    iconElement.style.width = `${size}px`;
+                    iconElement.style.height = `${size}px`;
+                    iconRef.current.appendChild(iconElement);
+                    window.lucide.createIcons({
+                        attrs: {
+                            strokeWidth: 2,
+                            width: size,
+                            height: size
+                        },
+                        nameAttr: 'data-lucide'
+                    });
+                }
+            }, [name, size, className]);
+
+            return <span ref={iconRef} className="inline-flex items-center justify-center" />;
         };
 
         const App = () => {
             const [view, setView] = useState('menu');
-            const [score, setScore] = useState(() => Number(localStorage.getItem('total_score')) || 0);
-            const [feedback, setFeedback] = useState(null);
-            const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false }); 
-            const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('math_level')) || 1);
-            const [mathProblem, setMathProblem] = useState({ q: '...', a: 0 });
+            const [score, setScore] = useState(() => Number(localStorage.getItem('myrthe_score')) || 0);
+            const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('myrthe_level')) || 1);
+            const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false });
+            const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
             const [userAnswer, setUserAnswer] = useState('');
+            const [feedback, setFeedback] = useState(null);
             const [countries, setCountries] = useState([]);
             const [flagProblem, setFlagProblem] = useState(null);
 
             useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-            });
-
-            useEffect(() => {
-                localStorage.setItem('total_score', score);
-                localStorage.setItem('math_level', mathLevel);
+                localStorage.setItem('myrthe_score', score);
+                localStorage.setItem('myrthe_level', mathLevel);
             }, [score, mathLevel]);
 
             useEffect(() => {
@@ -101,11 +123,9 @@
                     .catch(err => console.error("Fout bij laden landen:", err));
             }, []);
 
-            // Geheel herschreven reken-generator
-            const createNewMath = (types = selectedTypes) => {
-                const ops = Object.keys(types).filter(k => types[k]);
+            const generateMath = useCallback(() => {
+                const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
                 const type = ops.length > 0 ? ops[Math.floor(Math.random() * ops.length)] : 'plus';
-                
                 let n1, n2, q, a;
                 const range = mathLevel * 10;
 
@@ -132,172 +152,196 @@
                         q = `${n1} : ${n2}`;
                         break;
                     default:
-                        q = "1 + 1"; a = 2;
+                        q = '0 + 0'; a = 0;
                 }
-                
                 setMathProblem({ q, a });
                 setUserAnswer('');
                 setFeedback(null);
-            };
+            }, [selectedTypes, mathLevel]);
 
-            const checkMath = () => {
-                if (parseInt(userAnswer) === mathProblem.a) {
-                    setFeedback("Helemaal goed! ✨");
-                    setScore(s => s + 1);
-                    setTimeout(() => createNewMath(), 600);
-                } else {
-                    setFeedback("Probeer opnieuw! ❌");
-                    setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 600);
+            const generateFlag = useCallback(() => {
+                if (countries.length < 4) return;
+                const correct = countries[Math.floor(Math.random() * countries.length)];
+                let opts = [correct];
+                while(opts.length < 4) {
+                    const r = countries[Math.floor(Math.random() * countries.length)];
+                    if(!opts.find(o => o.name === r.name)) opts.push(r);
                 }
-            };
+                setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
+                setFeedback(null);
+            }, [countries]);
 
-            const Footer = () => (
-                <div className="app-footer">
-                    OEFENMEESTER ✨
+            const Header = ({ title, onBack }) => (
+                <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-slate-900/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
+                    <button onClick={onBack} className="text-slate-400 active:text-white transition-colors p-2 -ml-2">
+                        <Icon name="chevron-left" size={28} />
+                    </button>
+                    <h2 className="text-sm font-black uppercase tracking-[0.2em] italic text-slate-300">{title}</h2>
+                    <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full border border-orange-500/20">
+                        <Icon name="trophy" size={14} />
+                        <span className="text-xs font-black ml-1">{score}</span>
+                    </div>
                 </div>
             );
 
             if (view === 'menu') {
                 return (
-                    <div className="full-h flex flex-col bg-slate-900 text-white">
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
-                            <div className="text-8xl mb-2 animate-bounce">✨</div>
-                            <h1 className="text-4xl font-black italic uppercase tracking-tighter">Myrthe's App</h1>
+                    <div className="app-container bg-slate-950">
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                            <div className="relative mb-6">
+                                <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 rounded-full animate-pulse"></div>
+                                <div className="text-8xl relative drop-shadow-2xl">✨</div>
+                            </div>
+                            <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-10">Oefenmeester</h1>
                             
-                            <div className="w-full max-w-sm space-y-4">
-                                <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10 text-left">
-                                    <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" /></div>
+                            <div className="w-full max-w-sm space-y-5">
+                                <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 text-left group">
+                                    <div className="bg-indigo-600 p-4 rounded-2xl group-hover:rotate-6 transition-transform shadow-lg shadow-indigo-600/30 flex items-center justify-center text-white">
+                                        <Icon name="calculator" size={24} />
+                                    </div>
                                     <div>
                                         <b className="block text-xl font-bold">Rekenen</b>
-                                        <span className="opacity-50 text-xs uppercase font-semibold tracking-widest">Oefen je sommen</span>
+                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Sommen & Tafels</span>
                                     </div>
                                 </button>
-                                <button onClick={() => { 
-                                    if(countries.length === 0) return;
-                                    const correct = countries[Math.floor(Math.random() * countries.length)];
-                                    let opts = [correct];
-                                    while(opts.length < 4) {
-                                        const r = countries[Math.floor(Math.random() * countries.length)];
-                                        if(!opts.find(o => o.name === r.name)) opts.push(r);
-                                    }
-                                    setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
-                                    setView('flags'); 
-                                }} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10 text-left">
-                                    <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" /></div>
+
+                                <button onClick={() => { generateFlag(); setView('flags'); }} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 text-left group">
+                                    <div className="bg-emerald-600 p-4 rounded-2xl group-hover:rotate-6 transition-transform shadow-lg shadow-emerald-600/30 flex items-center justify-center text-white">
+                                        <Icon name="flag" size={24} />
+                                    </div>
                                     <div>
                                         <b className="block text-xl font-bold">Vlaggen</b>
-                                        <span className="opacity-50 text-xs uppercase font-semibold tracking-widest">Landen raden</span>
+                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Landen Raden</span>
                                     </div>
                                 </button>
                             </div>
                         </div>
-                        <Footer />
+                        <div className="p-6 pb-10 flex justify-center opacity-30">
+                            <span className="text-[10px] font-black tracking-[0.5em] uppercase">Myrthe's App</span>
+                        </div>
                     </div>
                 );
             }
 
             if (view === 'math-setup') {
                 return (
-                    <div className="full-h flex flex-col bg-slate-950 text-white">
-                        <div className="flex-1 p-8">
-                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mb-10 flex items-center gap-2">
-                                 <Icon name="chevron-left" size={14} /> TERUG NAAR MENU
-                            </button>
-                            <h2 className="text-3xl font-black mb-8 uppercase italic">Instellingen</h2>
+                    <div className="app-container bg-slate-950">
+                        <Header title="Instellingen" onBack={() => setView('menu')} />
+                        <div className="flex-1 p-8 max-w-sm mx-auto w-full overflow-y-auto">
+                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight">Welke sommen?</h3>
                             <div className="grid grid-cols-2 gap-4 mb-10">
                                 {['plus', 'min', 'keer', 'gedeeld'].map(t => (
                                     <button key={t} onClick={() => setSelectedTypes(prev => ({...prev, [t]: !prev[t]}))}
-                                        className={`p-6 rounded-[2rem] border-2 transition-all font-black uppercase text-xs tracking-widest ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400 shadow-xl' : 'bg-slate-900 border-white/5 opacity-40'}`}>
+                                        className={`p-6 rounded-3xl border-2 transition-all font-black uppercase text-[10px] tracking-widest flex flex-col items-center gap-2 ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400 shadow-xl shadow-indigo-600/20' : 'bg-slate-900 border-transparent opacity-40'}`}>
+                                        <span className="text-2xl">{t === 'plus' ? '+' : t === 'min' ? '-' : t === 'keer' ? '×' : '÷'}</span>
                                         {t}
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={() => { createNewMath(); setView('math-game'); }} className="w-full bg-indigo-600 py-8 rounded-[2.5rem] font-black text-2xl active:scale-95 transition-all shadow-2xl shadow-indigo-500/30 uppercase italic">
-                                STARTEN
+                            
+                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight">Niveau</h3>
+                            <div className="flex gap-4 mb-12">
+                                {[1, 2, 3].map(lvl => (
+                                    <button key={lvl} onClick={() => setMathLevel(lvl)}
+                                        className={`flex-1 py-4 rounded-2xl border-2 font-black transition-all ${mathLevel === lvl ? 'bg-white text-slate-950 border-white' : 'border-white/10 text-white/40'}`}>
+                                        Lvl {lvl}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <button onClick={() => { generateMath(); setView('math-game'); }} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 py-6 rounded-3xl font-black text-xl shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all uppercase italic text-white">
+                                Starten ✨
                             </button>
                         </div>
-                        <Footer />
                     </div>
                 );
             }
 
             if (view === 'math-game') {
                 return (
-                    <div className="full-h flex flex-col bg-slate-950 text-white">
-                        <div className="p-6 pt-12 flex justify-between items-center bg-slate-900/40 backdrop-blur-md">
-                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">STOPPEN</button>
-                            <div className="bg-orange-500/10 text-orange-500 px-4 py-1 rounded-full text-xs font-black tracking-tighter border border-orange-500/20">{score} 🔥</div>
-                        </div>
+                    <div className="app-container bg-slate-950">
+                        <Header title="Rekenen" onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <div className="text-[100px] font-black mb-6 leading-none tracking-tighter">{mathProblem.q}</div>
-                            <div className="text-6xl font-mono bg-slate-900 px-12 py-8 rounded-[3rem] min-w-[220px] border-2 border-slate-800 text-indigo-400 shadow-inner flex items-center justify-center">
-                                {userAnswer || <span className="opacity-10">?</span>}
+                            <div className="text-7xl font-black mb-10 tracking-tighter pop-in leading-none">{mathProblem.q}</div>
+                            <div className={`text-6xl font-mono bg-slate-900 w-full max-w-[260px] py-8 rounded-[2.5rem] border-2 transition-all flex items-center justify-center shadow-inner ${feedback?.type === 'success' ? 'border-emerald-500 text-emerald-400' : feedback?.type === 'error' ? 'border-rose-500 text-rose-400' : 'border-slate-800 text-indigo-400'}`}>
+                                {userAnswer || <span className="opacity-10 animate-pulse">?</span>}
                             </div>
-                            <div className="h-12 mt-6 text-2xl font-black text-emerald-400 uppercase italic tracking-widest">{feedback}</div>
+                            <div className="h-12 mt-6 flex items-center justify-center">
+                                {feedback && (
+                                    <div className={`text-sm font-black uppercase tracking-widest feedback-slide ${feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {feedback.text}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         
-                        {/* Toetsenbord */}
-                        <div className="bg-slate-900/80 backdrop-blur-xl p-6 pt-8 rounded-t-[3.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] border-t border-white/5">
-                            <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto mb-2">
+                        <div className="bg-slate-900/90 backdrop-blur-2xl p-6 pb-12 rounded-t-[3rem] border-t border-white/5 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+                            <div className="numpad-grid max-w-xs mx-auto">
                                 {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                     <button key={b} onClick={() => {
-                                        if(b === 'OK') { if(userAnswer) checkMath(); }
+                                        if(b === 'OK') { 
+                                            if(!userAnswer) return;
+                                            if(parseInt(userAnswer) === mathProblem.a) {
+                                                setFeedback({ type: 'success', text: 'Helemaal goed! 🌟' });
+                                                setScore(s => s + 1);
+                                                setTimeout(generateMath, 800);
+                                            } else {
+                                                setFeedback({ type: 'error', text: 'Probeer het nog eens!' });
+                                                setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 1000);
+                                            }
+                                        }
                                         else if(b === 'C') setUserAnswer('');
                                         else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                    }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 border border-white/5'}`}>{b}</button>
+                                    }} className={`h-16 rounded-2xl text-2xl font-black active:scale-90 transition-all flex items-center justify-center text-white ${b === 'OK' ? 'bg-indigo-600 shadow-lg shadow-indigo-600/40' : 'bg-white/5 border border-white/5'}`}>
+                                        {b === 'OK' ? <Icon name="check" size={28} /> : b}
+                                    </button>
                                 ))}
                             </div>
                         </div>
-                        <Footer />
                     </div>
                 );
             }
 
             if (view === 'flags') {
-                const generateNextFlag = () => {
-                    const correct = countries[Math.floor(Math.random() * countries.length)];
-                    let opts = [correct];
-                    while(opts.length < 4) {
-                        const r = countries[Math.floor(Math.random() * countries.length)];
-                        if(!opts.find(o => o.name === r.name)) opts.push(r);
-                    }
-                    setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
-                    setFeedback(null);
-                };
-
                 return (
-                    <div className="full-h flex flex-col bg-slate-950 text-white">
-                         <div className="p-6 pt-12 flex justify-between items-center bg-slate-900/40 backdrop-blur-md">
-                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">STOPPEN</button>
-                            <div className="bg-orange-500/10 text-orange-500 px-4 py-1 rounded-full text-xs font-black tracking-tighter border border-orange-500/20">{score} 🔥</div>
-                        </div>
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
+                    <div className="app-container bg-slate-950">
+                        <Header title="Vlaggen" onBack={() => setView('menu')} />
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center overflow-y-auto">
                             <div className="space-y-1">
-                                <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] uppercase opacity-50">Zoek de vlag van</p>
+                                <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] uppercase">Zoek de vlag van</p>
                                 <h2 className="text-4xl font-black italic uppercase leading-none tracking-tighter text-indigo-400">{flagProblem?.q}</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                                 {flagProblem?.opts.map((o, i) => (
                                     <button key={i} onClick={() => {
                                         if (o.name === flagProblem.a) {
-                                            setFeedback("Goed! 🌍"); setScore(s => s + 1); setTimeout(generateNextFlag, 600);
+                                            setFeedback({ type: 'success', text: 'Goed geraden! 🌍' }); 
+                                            setScore(s => s + 2); 
+                                            setTimeout(generateFlag, 800);
                                         } else {
-                                            setFeedback("Fout! ❌"); setTimeout(() => setFeedback(null), 600);
+                                            setFeedback({ type: 'error', text: 'Dat is een andere vlag!' }); 
+                                            setTimeout(() => setFeedback(null), 1000);
                                         }
-                                    }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 border border-white/10 overflow-hidden shadow-2xl transition-all">
-                                        <img src={o.flag} className="w-full h-full object-cover rounded-2xl" alt="Vlag" />
+                                    }} className="aspect-[3/2] glass rounded-3xl p-1.5 active:scale-95 border border-white/10 overflow-hidden shadow-2xl transition-all">
+                                        <img src={o.flag} className="w-full h-full object-cover rounded-[1.2rem]" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-xl font-black text-emerald-400 uppercase italic tracking-widest">{feedback}</div>
+                            <div className="h-10">
+                                {feedback && (
+                                    <div className={`text-sm font-black uppercase tracking-widest feedback-slide ${feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                        {feedback.text}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <Footer />
                     </div>
                 );
             }
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
         root.render(<App />);
     </script>
 </body>
