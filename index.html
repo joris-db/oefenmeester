@@ -9,7 +9,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5353/5353363.png">
+    
+    <!-- Icoon voor op het beginscherm. VERVANG DE URL HIERONDER DOOR DE URL VAN JOUW GEÜPLOADE AFBEELDING -->
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/jouw-gebruikersnaam/jouw-repo/main/icoon.jpg">
     
     <link rel="manifest" href="manifest.json">
 
@@ -32,10 +34,16 @@
             -webkit-tap-highlight-color: transparent; 
             user-select: none; 
             margin: 0;
+            height: 100vh;
         }
         .full-h { height: 100vh; height: -webkit-fill-available; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        
+        /* Verbeterde footer/safe-area voor het toetsenbord */
+        .keyboard-footer { 
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); 
+        }
+
         #root:empty::before {
             content: 'Laden... ✨';
             display: flex; align-items: center; justify-content: center;
@@ -215,7 +223,7 @@
                         </div>
 
                         <h2 className="text-2xl font-black mb-6 italic uppercase">2. Kies het Level</h2>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-3 mb-8">
                             {levelsList.map(lvl => (
                                 <button 
                                     key={lvl}
@@ -227,7 +235,7 @@
                             ))}
                         </div>
                         
-                        <div className="mt-12 text-center opacity-30 text-[10px] uppercase font-bold tracking-[0.3em]">
+                        <div className="text-center opacity-30 text-[10px] uppercase font-bold tracking-[0.3em] pb-10">
                             Alle types gebruiken level {mathLevel}
                         </div>
                     </div>
@@ -244,20 +252,20 @@
                                 <div className="text-[10px] opacity-50 font-bold uppercase">{currentMathType}</div>
                             </div>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <div className="text-8xl font-black mb-8 tabular-nums tracking-tighter">{mathProblem.q}</div>
-                            <div className="text-6xl font-mono bg-slate-900 px-12 py-6 rounded-[2rem] min-w-[200px] border-2 border-slate-800 text-indigo-400 shadow-inner">
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
+                            <div className="text-7xl sm:text-8xl font-black mb-6 tabular-nums tracking-tighter">{mathProblem.q}</div>
+                            <div className="text-5xl sm:text-6xl font-mono bg-slate-900 px-10 py-5 rounded-[2rem] min-w-[180px] border-2 border-slate-800 text-indigo-400 shadow-inner">
                                 {userAnswer || <span className="opacity-10">?</span>}
                             </div>
-                            <div className="h-12 mt-6 text-2xl font-bold text-emerald-400">{feedback}</div>
+                            <div className="h-12 mt-4 text-xl font-bold text-emerald-400">{feedback}</div>
                         </div>
-                        <div className="bg-slate-900 p-6 rounded-t-[3rem] safe-bottom grid grid-cols-3 gap-3 shadow-2xl border-t border-white/10">
+                        <div className="bg-slate-900 p-6 rounded-t-[3rem] keyboard-footer grid grid-cols-3 gap-3 shadow-2xl border-t border-white/10">
                             {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                 <button key={b} onClick={() => {
                                     if(b === 'OK') { if(userAnswer) checkMath(); }
                                     else if(b === 'C') setUserAnswer('');
                                     else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800'}`}>{b}</button>
+                                }} className={`h-14 sm:h-16 rounded-2xl text-2xl sm:text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800'}`}>{b}</button>
                             ))}
                         </div>
                     </div>
@@ -285,7 +293,7 @@
                         <div className="flex-1 flex flex-col items-center justify-center gap-8">
                             <div className="text-center">
                                 <p className="text-slate-500 font-bold text-[10px] tracking-widest mb-2 uppercase">Welk land is dit?</p>
-                                <h2 className="text-4xl font-black tracking-tighter uppercase">{flagProblem?.q}</h2>
+                                <h2 className="text-4xl font-black tracking-tighter uppercase leading-tight">{flagProblem?.q}</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full max-w-md">
                                 {flagProblem?.opts.map((o, i) => (
@@ -300,8 +308,9 @@
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-xl font-bold text-emerald-400 italic">{feedback}</div>
+                            <div className="h-10 text-xl font-bold text-emerald-400 italic text-center">{feedback}</div>
                         </div>
+                        <div className="keyboard-footer"></div>
                     </div>
                 );
             }
