@@ -13,6 +13,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
+
+    <!-- start webpushr tracking code --> 
+    <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";
+    fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
+    webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });</script>
+    <!-- end webpushr tracking code -->
     
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -72,10 +78,8 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // Icon helper die direct de Lucide library aanspreekt
         const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
-
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
                     iconRef.current.innerHTML = ''; 
@@ -86,16 +90,11 @@
                     iconElement.style.height = `${size}px`;
                     iconRef.current.appendChild(iconElement);
                     window.lucide.createIcons({
-                        attrs: {
-                            strokeWidth: 2,
-                            width: size,
-                            height: size
-                        },
+                        attrs: { strokeWidth: 2, width: size, height: size },
                         nameAttr: 'data-lucide'
                     });
                 }
             }, [name, size, className]);
-
             return <span ref={iconRef} className="inline-flex items-center justify-center" />;
         };
 
@@ -111,13 +110,11 @@
             const [countries, setCountries] = useState([]);
             const [flagProblem, setFlagProblem] = useState(null);
 
-            // Opslaan van voortgang
             useEffect(() => {
                 localStorage.setItem('myrthe_score', score);
                 localStorage.setItem('myrthe_level', mathLevel);
             }, [score, mathLevel]);
 
-            // Landen ophalen (met Nederlandse vertalingen)
             useEffect(() => {
                 fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags')
                     .then(res => res.json())
@@ -136,33 +133,61 @@
                 const type = ops.length > 0 ? ops[Math.floor(Math.random() * ops.length)] : 'plus';
                 let n1, n2, q, a;
                 
-                const baseRange = mathLevel * 10;
+                const getMinVal = () => Math.max(2, Math.floor(mathLevel / 2));
+                const minVal = getMinVal();
 
                 switch(type) {
                     case 'plus':
-                        n1 = Math.floor(Math.random() * baseRange) + 1;
-                        n2 = Math.floor(Math.random() * baseRange) + 1;
+                        const pRange = mathLevel * 15;
+                        n1 = Math.floor(Math.random() * pRange) + minVal;
+                        n2 = Math.floor(Math.random() * pRange) + minVal;
                         q = `${n1} + ${n2}`; a = n1 + n2;
                         break;
                     case 'min':
-                        n1 = Math.floor(Math.random() * baseRange) + 5;
-                        n2 = Math.floor(Math.random() * n1);
+                        const mRange = mathLevel * 15;
+                        n1 = Math.floor(Math.random() * mRange) + (minVal * 2);
+                        n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal;
                         q = `${n1} - ${n2}`; a = n1 - n2;
                         break;
                     case 'keer':
-                        const maxKeer = 10 + (mathLevel - 1); 
-                        n1 = Math.floor(Math.random() * maxKeer) + 1;
-                        n2 = Math.floor(Math.random() * 10) + 1;
+                        let kMax;
+                        if (mathLevel < 5) kMax = 10;
+                        else if (mathLevel < 15) kMax = 25;
+                        else kMax = 100;
+
+                        const getKVal = () => {
+                            let val = Math.floor(Math.random() * (kMax - minVal + 1)) + minVal;
+                            if (mathLevel > 3 && mathLevel < 12 && Math.random() > 0.4) {
+                                val = Math.floor(Math.random() * 4) + 6;
+                            }
+                            return val;
+                        };
+
+                        n1 = getKVal();
+                        n2 = getKVal();
                         q = `${n1} × ${n2}`; a = n1 * n2;
                         break;
                     case 'gedeeld':
-                        n2 = Math.floor(Math.random() * 9) + 2;
-                        a = Math.floor(Math.random() * (10 + mathLevel)) + 1;
+                        let dMax;
+                        if (mathLevel < 5) dMax = 10;
+                        else if (mathLevel < 15) dMax = 25;
+                        else dMax = 100;
+
+                        const getDVal = () => {
+                            let val = Math.floor(Math.random() * (dMax - minVal + 1)) + minVal;
+                            if (mathLevel > 3 && mathLevel < 12 && Math.random() > 0.4) {
+                                val = Math.floor(Math.random() * 4) + 6;
+                            }
+                            return val;
+                        };
+
+                        n2 = getDVal();
+                        a = getDVal(); 
                         n1 = n2 * a;
                         q = `${n1} : ${n2}`;
                         break;
                     default:
-                        q = '0 + 0'; a = 0;
+                        q = '2 + 2'; a = 4;
                 }
                 setMathProblem({ q, a });
                 setUserAnswer('');
@@ -205,7 +230,7 @@
                                 <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 rounded-full animate-pulse"></div>
                                 <div className="text-8xl relative drop-shadow-2xl">✨</div>
                             </div>
-                            <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-10">Oefenmeester</h1>
+                            <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-10 leading-tight">Myrthe's<br/>Oefenmeester</h1>
                             
                             <div className="w-full max-w-sm space-y-5">
                                 <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 text-left group text-white">
@@ -214,7 +239,7 @@
                                     </div>
                                     <div>
                                         <b className="block text-xl font-bold">Rekenen</b>
-                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Lvl {mathLevel} • Sommen</span>
+                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Level {mathLevel} / 25</span>
                                     </div>
                                 </button>
 
@@ -224,13 +249,13 @@
                                     </div>
                                     <div>
                                         <b className="block text-xl font-bold">Vlaggen</b>
-                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">In het Nederlands</span>
+                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Wereldreis</span>
                                     </div>
                                 </button>
                             </div>
                         </div>
                         <div className="p-6 pb-10 flex justify-center opacity-30">
-                            <span className="text-[10px] font-black tracking-[0.5em] uppercase">Myrthe's App</span>
+                            <span className="text-[10px] font-black tracking-[0.5em] uppercase">Myrthe's Playground</span>
                         </div>
                     </div>
                 );
@@ -241,7 +266,7 @@
                     <div className="app-container bg-slate-950">
                         <Header title="Instellingen" onBack={() => setView('menu')} />
                         <div className="flex-1 p-8 max-w-sm mx-auto w-full overflow-y-auto">
-                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight text-white">Welke sommen?</h3>
+                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight text-white">Kies je sommen</h3>
                             <div className="grid grid-cols-2 gap-4 mb-10">
                                 {['plus', 'min', 'keer', 'gedeeld'].map(t => (
                                     <button key={t} onClick={() => setSelectedTypes(prev => ({...prev, [t]: !prev[t]}))}
@@ -252,18 +277,18 @@
                                 ))}
                             </div>
                             
-                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight text-white">Start Niveau</h3>
-                            <div className="flex gap-4 mb-12">
-                                {[1, 2, 3].map(lvl => (
+                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight text-white">Start Level (1-25)</h3>
+                            <div className="flex flex-wrap gap-3 mb-12">
+                                {[1, 5, 10, 15, 20].map(lvl => (
                                     <button key={lvl} onClick={() => {setMathLevel(lvl); setMathStreak(0);}}
-                                        className={`flex-1 py-4 rounded-2xl border-2 font-black transition-all ${mathLevel === lvl ? 'bg-white text-slate-950 border-white' : 'border-white/10 text-white/40'}`}>
+                                        className={`flex-1 min-w-[60px] py-4 rounded-2xl border-2 font-black transition-all ${mathLevel === lvl ? 'bg-white text-slate-950 border-white' : 'border-white/10 text-white/40'}`}>
                                         Lvl {lvl}
                                     </button>
                                 ))}
                             </div>
 
                             <button onClick={() => { generateMath(); setView('math-game'); }} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 py-6 rounded-3xl font-black text-xl shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all uppercase italic text-white">
-                                Starten ✨
+                                Let's Go! 🚀
                             </button>
                         </div>
                     </div>
@@ -274,21 +299,16 @@
                 return (
                     <div className="app-container bg-slate-950">
                         <Header title="Rekenen" showLevel={true} onBack={() => setView('menu')} />
-                        
                         <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-hidden">
-                            {/* Streak indicator */}
                             <div className="mb-4 flex gap-2">
                                 {[...Array(5)].map((_, i) => (
                                     <div key={i} className={`w-3 h-3 rounded-full transition-all duration-500 ${i < mathStreak ? 'bg-indigo-400 scale-125 shadow-lg shadow-indigo-500/50' : 'bg-slate-800'}`} />
                                 ))}
                             </div>
-
-                            <div className="text-6xl font-black mb-6 tracking-tighter pop-in leading-none text-white">{mathProblem.q}</div>
-                            
+                            <div className="text-5xl font-black mb-6 tracking-tighter pop-in leading-tight text-center text-white">{mathProblem.q}</div>
                             <div className={`text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2rem] border-2 transition-all flex items-center justify-center shadow-inner ${feedback?.type === 'success' ? 'border-emerald-500 text-emerald-400' : feedback?.type === 'error' ? 'border-rose-500 text-rose-400' : 'border-slate-800 text-indigo-400'}`}>
                                 {userAnswer || <span className="opacity-10 animate-pulse">?</span>}
                             </div>
-
                             <div className="h-10 mt-4 flex items-center justify-center">
                                 {feedback && (
                                     <div className={`text-sm font-black uppercase tracking-widest feedback-slide ${feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -298,7 +318,6 @@
                             </div>
                         </div>
                         
-                        {/* Footer Numpad Sectie */}
                         <div className="bg-slate-900/90 backdrop-blur-2xl px-6 pt-6 pb-10 rounded-t-[2.5rem] border-t border-white/5 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
                             <div className="numpad-grid max-w-xs mx-auto">
                                 {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
@@ -308,24 +327,23 @@
                                             if(parseInt(userAnswer) === mathProblem.a) {
                                                 const newStreak = mathStreak + 1;
                                                 setScore(s => s + 1);
-                                                
                                                 if (newStreak >= 5) {
                                                     setFeedback({ type: 'success', text: 'Level Up! 🚀' });
-                                                    setMathLevel(l => Math.min(l + 1, 10)); 
+                                                    setMathLevel(l => Math.min(l + 1, 25)); 
                                                     setMathStreak(0);
                                                 } else {
-                                                    setFeedback({ type: 'success', text: 'Helemaal goed! 🌟' });
+                                                    setFeedback({ type: 'success', text: 'Top gedaan! ✨' });
                                                     setMathStreak(newStreak);
                                                 }
                                                 setTimeout(generateMath, 800);
                                             } else {
-                                                setFeedback({ type: 'error', text: 'Opnieuw proberen!' });
+                                                setFeedback({ type: 'error', text: `Nee, het was ${mathProblem.a}` });
                                                 setMathStreak(0); 
-                                                setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 1000);
+                                                setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 1500);
                                             }
                                         }
                                         else if(b === 'C') setUserAnswer('');
-                                        else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
+                                        else if(userAnswer.length < 6) setUserAnswer(userAnswer + b);
                                     }} className={`h-14 rounded-2xl text-xl font-black active:scale-90 transition-all flex items-center justify-center text-white ${b === 'OK' ? 'bg-indigo-600 shadow-lg shadow-indigo-600/40' : 'bg-white/5 border border-white/5'}`}>
                                         {b === 'OK' ? <Icon name="check" size={24} /> : b}
                                     </button>
@@ -349,7 +367,7 @@
                                 {flagProblem?.opts.map((o, i) => (
                                     <button key={i} onClick={() => {
                                         if (o.name === flagProblem.a) {
-                                            setFeedback({ type: 'success', text: 'Goed geraden! 🌍' }); 
+                                            setFeedback({ type: 'success', text: 'Helemaal goed! 🌍' }); 
                                             setScore(s => s + 2); 
                                             setTimeout(generateFlag, 800);
                                         } else {
@@ -369,7 +387,6 @@
                                 )}
                             </div>
                         </div>
-                        {/* Footer placeholder voor visuele balans */}
                         <div className="p-4 flex justify-center opacity-10">
                             <Icon name="globe" size={16} />
                         </div>
@@ -378,8 +395,7 @@
             }
         };
 
-        const rootElement = document.getElementById('root');
-        const root = ReactDOM.createRoot(rootElement);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
