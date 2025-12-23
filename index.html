@@ -32,6 +32,23 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .scroll-hide::-webkit-scrollbar { display: none; }
+        
+        /* Specifieke optimalisatie voor vlaggen op mobiel */
+        .flag-card {
+            aspect-ratio: 3 / 2;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: 1rem;
+            background: #1e293b;
+        }
+        .flag-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
@@ -72,7 +89,7 @@
             { nl: "De lift", de: "Aufzug" }, { nl: "De trap", de: "Treppe" }, { nl: "De gang", de: "Flur" }, { nl: "De ingang", de: "Eingang" },
             { nl: "De uitgang", de: "Ausgang" }, { nl: "De vergaderruimte", de: "Besprechungsraum" }, { nl: "De receptie", de: "Empfang" }, { nl: "De sleutel", de: "Schlüssel" },
             { nl: "De pas", de: "Ausweis" }, { nl: "De manager", de: "Leiter" }, { nl: "De chef", de: "Vorgesetzter" }, { nl: "De assistent", de: "Assistent" },
-            { nl: "De stagiair", de: "Praktikant" }, { nl: "De samenwerking", de: "Zusammenarbeit" }, { nl: "Het succes", de: "Erfolg" }, { nl: "Het probleem", de: "Problem" },
+            { nl: "De stagiair", de: "Praktikant" }, { nl: "De samenwerking", de: "Zusammenarbeit" }, { nl: "Het success", de: "Erfolg" }, { nl: "Het probleem", de: "Problem" },
             { nl: "De oplossing", de: "Lösung" }, { nl: "De vraag", de: "Frage" }, { nl: "Het antwoord", de: "Antwort" }, { nl: "De discussie", de: "Diskussion" },
             { nl: "De beslissing", de: "Entscheidung" }, { nl: "De verandering", de: "Veränderung" }, { nl: "De verbetering", de: "Verbesserung" }, { nl: "De controle", de: "Kontrolle" },
             { nl: "De taak", de: "Aufgabe" }, { nl: "De verantwoordelijkheid", de: "Verantwortung" }, { nl: "De ervaring", de: "Erfahrung" }, { nl: "De kennis", de: "Wissen" },
@@ -232,27 +249,27 @@
             if (view === 'menu') {
                 return (
                     <div className="app-container flex flex-col items-center justify-center p-6 text-center">
-                        <h1 className="text-4xl font-black italic uppercase mb-8 tracking-tighter">Myrthe's<br/>Oefenmeester</h1>
+                        <h1 className="text-4xl font-black italic uppercase mb-8 tracking-tighter leading-tight">Myrthe's<br/>Oefenmeester</h1>
                         <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
-                            <button onClick={() => setView('math-setup')} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" /></div>
-                                <div className="text-left">
+                            <button onClick={() => setView('math-setup')} className="glass p-5 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
+                                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg flex-shrink-0"><Icon name="calculator" /></div>
+                                <div className="text-left overflow-hidden">
                                     <span className="block text-lg font-bold">Rekenen</span>
-                                    <span className="text-[10px] uppercase text-slate-400">Plus, min, keer & gedeeld</span>
+                                    <span className="text-[10px] uppercase text-slate-400 block truncate">Plus, min, keer & gedeeld</span>
                                 </div>
                             </button>
-                            <button onClick={generateGerman} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="briefcase" /></div>
-                                <div className="text-left">
+                            <button onClick={generateGerman} className="glass p-5 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
+                                <div className="bg-rose-600 p-4 rounded-2xl shadow-lg flex-shrink-0"><Icon name="briefcase" /></div>
+                                <div className="text-left overflow-hidden">
                                     <span className="block text-lg font-bold">Lidl Duits (Kantoor)</span>
-                                    <span className="text-[10px] uppercase text-slate-400">200+ woorden kantoorwerk</span>
+                                    <span className="text-[10px] uppercase text-slate-400 block truncate">200+ woorden kantoorwerk</span>
                                 </div>
                             </button>
-                            <button onClick={generateFlagProblem} className="glass p-6 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" /></div>
-                                <div className="text-left">
+                            <button onClick={generateFlagProblem} className="glass p-5 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
+                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg flex-shrink-0"><Icon name="flag" /></div>
+                                <div className="text-left overflow-hidden">
                                     <span className="block text-lg font-bold">Vlaggen</span>
-                                    <span className="text-[10px] uppercase text-slate-400">Landen van de wereld</span>
+                                    <span className="text-[10px] uppercase text-slate-400 block truncate">Landen van de wereld</span>
                                 </div>
                             </button>
                         </div>
@@ -328,7 +345,7 @@
             if (view === 'german-game') {
                 return (
                     <div className="app-container">
-                        <Header title="Lidl Duits (Kantoor)" onBack={() => setView('menu')} />
+                        <Header title="Lidl Duits" onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col p-8 items-center justify-center gap-8 text-center scroll-hide overflow-y-auto">
                             <div className="flex flex-col gap-2">
                                 <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Wat is het Duitse woord voor:</span>
@@ -353,21 +370,23 @@
                 return (
                     <div className="app-container">
                         <Header title="Vlaggen Quiz" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col p-6 items-center justify-center gap-6 text-center">
-                            <div className="flex flex-col gap-2">
+                        <div className="flex-1 flex flex-col p-6 items-center justify-start gap-4 text-center overflow-y-auto pt-10">
+                            <div className="flex flex-col gap-1 mb-2">
                                 <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest italic">Welke vlag hoort bij:</span>
-                                <h2 className="text-4xl font-black italic uppercase tracking-tighter text-emerald-400">{currentProblem.name}</h2>
+                                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-emerald-400 leading-tight">{currentProblem.name}</h2>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                            
+                            <div className="grid grid-cols-2 gap-3 w-full max-w-xs mx-auto">
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-2 rounded-[2rem] overflow-hidden aspect-[4/3] active:scale-95 transition-all border-2 border-transparent hover:border-emerald-500/50">
-                                        <img src={o.flag} className="w-full h-full object-cover rounded-[1.5rem]" alt="Vlag" />
+                                    <button key={i} onClick={() => handleAnswer(o)} className="flag-card glass border-2 border-transparent active:border-emerald-500 transition-all">
+                                        <img src={o.flag} className="flag-img" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-12 flex items-center justify-center px-4">
+
+                            <div className="min-h-[3rem] w-full flex items-center justify-center px-4 mt-2">
                                 {feedback && (
-                                    <div className={`text-sm font-black uppercase px-6 py-2 rounded-full ${feedback.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
+                                    <div className={`text-[11px] font-black uppercase px-5 py-2.5 rounded-2xl shadow-xl ${feedback.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
                                         {feedback.text}
                                     </div>
                                 )}
