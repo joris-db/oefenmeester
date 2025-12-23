@@ -32,6 +32,12 @@
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .scroll-hide::-webkit-scrollbar { display: none; }
+        
+        /* Zorg dat de vlaggen niet vervormen of afgesneden worden */
+        .flag-contain {
+            object-fit: contain;
+            background-color: rgba(0,0,0,0.2);
+        }
     </style>
 </head>
 <body>
@@ -40,50 +46,32 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // Uitgebreide lijst met 200+ Duitse woorden voor Lidl kantoorwerk
         const germanLidlWords = [
-            // Algemeen Kantoor
             { nl: "De vergadering", de: "Besprechung" }, { nl: "De afspraak", de: "Termin" }, { nl: "De collega", de: "Kollege" }, { nl: "De afdeling", de: "Abteilung" },
             { nl: "Het kantoor", de: "Büro" }, { nl: "De e-mail", de: "E-Mail" }, { nl: "De bijlage", de: "Anhang" }, { nl: "Het verslag", de: "Protokoll" },
             { nl: "De deadline", de: "Frist" }, { nl: "De opdracht", de: "Auftrag" }, { nl: "De planning", de: "Planung" }, { nl: "De strategie", de: "Strategie" },
             { nl: "De doelstelling", de: "Zielsetzung" }, { nl: "Het project", de: "Projekt" }, { nl: "De feedback", de: "Rückmeldung" }, { nl: "De presentatie", de: "Präsentation" },
-            
-            // Inkoop & Assortiment
             { nl: "De inkoop", de: "Einkauf" }, { nl: "De leverancier", de: "Lieferant" }, { nl: "De onderhandeling", de: "Verhandlung" }, { nl: "De prijs", de: "Preis" },
             { nl: "De korting", de: "Rabatt" }, { nl: "Het contract", de: "Vertrag" }, { nl: "De kwaliteit", de: "Qualität" }, { nl: "Het monster (product)", de: "Muster" },
             { nl: "De verpakking", de: "Verpackung" }, { nl: "Het assortiment", de: "Sortiment" }, { nl: "De houdbaarheid", de: "Haltbarkeit" }, { nl: "De voorraad", de: "Lagerbestand" },
             { nl: "De bestelling", de: "Bestellung" }, { nl: "De levering", de: "Lieferung" }, { nl: "De vrachtbrief", de: "Frachtbrief" }, { nl: "De douane", de: "Zoll" },
-            
-            // Logistiek & Supply Chain
             { nl: "De logistiek", de: "Logistik" }, { nl: "Het distributiecentrum", de: "Zentrallager" }, { nl: "De transportketen", de: "Lieferkette" }, { nl: "De vrachtwagen", de: "LKW" },
             { nl: "De verzending", de: "Versand" }, { nl: "De opslag", de: "Lagerung" }, { nl: "Het magazijn", de: "Lager" }, { nl: "De pallet", de: "Palette" },
             { nl: "De inventarisatie", de: "Inventur" }, { nl: "De routeplanning", de: "Tourenplanung" }, { nl: "De vertraging", de: "Verzögerung" }, { nl: "De capaciteit", de: "Kapazität" },
-            
-            // Financiën & Administratie
             { nl: "De boekhouding", de: "Buchhaltung" }, { nl: "De factuur", de: "Rechnung" }, { nl: "De betaling", de: "Zahlung" }, { nl: "De winst", de: "Gewinn" },
             { nl: "Het verlies", de: "Verlust" }, { nl: "De omzet", de: "Umsatz" }, { nl: "De begroting", de: "Budget" }, { nl: "De belastingen", de: "Steuern" },
             { nl: "Het bankrekeningnummer", de: "Kontonummer" }, { nl: "De onkosten", de: "Ausgaben" }, { nl: "De analyse", de: "Analyse" }, { nl: "Het rapport", de: "Bericht" },
-            
-            // IT & Techniek
             { nl: "De software", de: "Software" }, { nl: "De hardware", de: "Hardware" }, { nl: "De database", de: "Datenbank" }, { nl: "Het wachtwoord", de: "Passwort" },
             { nl: "De verbinding", de: "Verbindung" }, { nl: "De systeembeheerder", de: "Systemadministrator" }, { nl: "De update", de: "Aktualisierung" }, { nl: "De storing", de: "Störung" },
             { nl: "De laptop", de: "Laptop" }, { nl: "Het scherm", de: "Bildschirm" }, { nl: "De muis", de: "Maus" }, { nl: "Het toetsenbord", de: "Tastatur" },
-            
-            // Human Resources (HR)
             { nl: "De sollicitatie", de: "Bewerbung" }, { nl: "Het interview", de: "Vorstellungsgespräch" }, { nl: "De werknemer", de: "Arbeitnehmer" }, { nl: "De werkgever", de: "Arbeitgeber" },
             { nl: "Het salaris", de: "Gehalt" }, { nl: "De vakantie", de: "Urlaub" }, { nl: "De ziekte", de: "Krankheit" }, { nl: "De opleiding", de: "Fortbildung" },
             { nl: "De overwerkuren", de: "Überstunden" }, { nl: "De ontslagname", de: "Kündigung" }, { nl: "Het team", de: "Team" }, { nl: "De motivatie", de: "Motivation" },
-            
-            // Marketing & Communicatie
             { nl: "De reclame", de: "Werbung" }, { nl: "De folder", de: "Prospekt" }, { nl: "De klant", de: "Kunde" }, { nl: "De doelgroep", de: "Zielgruppe" },
             { nl: "De concurrentie", de: "Wettbewerb" }, { nl: "Het merk", de: "Marke" }, { nl: "De campagne", de: "Kampagne" }, { nl: "De website", de: "Webseite" },
             { nl: "De social media", de: "Soziale Medien" }, { nl: "De nieuwsbrief", de: "Newsletter" }, { nl: "Het logo", de: "Logo" }, { nl: "Het imago", de: "Image" },
-
-            // Vastgoed & Expansie
             { nl: "De locatie", de: "Standort" }, { nl: "De huur", de: "Miete" }, { nl: "De bouw", de: "Bau" }, { nl: "De vergunning", de: "Genehmigung" },
             { nl: "De renovatie", de: "Renovierung" }, { nl: "Het terrein", de: "Gelände" }, { nl: "De architect", de: "Architekt" }, { nl: "De parkeerplaats", de: "Parkplatz" },
-            
-            // Meer kantoortermen (om de 200 te halen)
             { nl: "Het bureau", de: "Schreibtisch" }, { nl: "De stoel", de: "Stuhl" }, { nl: "De koffie", de: "Kaffee" }, { nl: "De lunchpauze", de: "Mittagspause" },
             { nl: "De telefoon", de: "Telefon" }, { nl: "De printer", de: "Drucker" }, { nl: "Het papier", de: "Papier" }, { nl: "De map", de: "Ordner" },
             { nl: "De pen", de: "Stift" }, { nl: "Het notitieblok", de: "Notizblock" }, { nl: "De agenda", de: "Kalender" }, { nl: "De klok", de: "Uhr" },
@@ -340,16 +328,24 @@
                 return (
                     <div className="app-container">
                         <Header title="Vlaggen" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 text-center">
-                            <h2 className="text-3xl font-black italic uppercase text-emerald-400 leading-tight">{currentProblem.q}</h2>
-                            <div className="grid grid-cols-2 gap-4 w-full">
+                        <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 gap-4 sm:gap-6 text-center overflow-y-auto">
+                            <h2 className="text-2xl sm:text-3xl font-black italic uppercase text-emerald-400 leading-tight mb-2">{currentProblem.q}</h2>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-md">
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o.name)} className="glass aspect-[3/2] rounded-2xl overflow-hidden active:scale-95 transition-all">
-                                        <img src={o.flag} className="w-full h-full object-cover" alt="Vlag" />
+                                    <button 
+                                        key={i} 
+                                        onClick={() => handleAnswer(o.name)} 
+                                        className="glass p-2 sm:p-3 rounded-2xl flex items-center justify-center aspect-[4/3] active:scale-95 transition-all overflow-hidden"
+                                    >
+                                        <img 
+                                            src={o.flag} 
+                                            className="flag-contain w-full h-full rounded-lg" 
+                                            alt={`Vlag van ${o.name}`} 
+                                        />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-sm font-black uppercase">
+                            <div className="h-10 text-sm font-black uppercase mt-2">
                                 {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
