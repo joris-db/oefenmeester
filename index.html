@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     
-    <!-- Icoon Koppeling (Verwijst naar icon.png in je GitHub map) -->
+    <!-- Icoon Koppeling -->
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
 
@@ -90,8 +90,22 @@
             }, []);
 
             const enableNotifications = () => {
+                // iPhone fix: check of we in standalone mode zitten
+                const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+                
+                if (!isStandalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
+                    // Laat een melding zien dat ze de app eerst moeten toevoegen
+                    setFeedback("Voeg eerst toe aan beginscherm! 📲");
+                    setTimeout(() => setFeedback(null), 3000);
+                    return;
+                }
+
                 if (typeof window.webpushr !== 'undefined') {
                     window.webpushr('prompt');
+                } else {
+                    // Fallback als script nog laadt
+                    setFeedback("Momentje... ⏳");
+                    setTimeout(() => setFeedback(null), 2000);
                 }
             };
 
@@ -167,7 +181,11 @@
                             </button>
                         </div>
 
-                        <button onClick={enableNotifications} className="mt-4 flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest active:scale-90 transition-all border border-indigo-500/20">
+                        <div className="h-8 flex items-center justify-center text-indigo-300 font-bold">
+                            {feedback}
+                        </div>
+
+                        <button onClick={enableNotifications} className="mt-2 flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest active:scale-90 transition-all border border-indigo-500/20">
                             <Icon name="bell" size={16} /> Meldingen aanzetten
                         </button>
                     </div>
