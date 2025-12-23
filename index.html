@@ -10,9 +10,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
-    <meta name="mobile-web-app-capable" content="yes">
-
-    <link rel="manifest" href='data:application/manifest+json,{"name":"Myrthes Oefenmeester","short_name":"Oefenmeester","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#020617","icons":[{"src":"https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png","sizes":"512x512","type":"image/png"}]}'>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -21,19 +18,18 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
-        :root { --slate-950: #020617; --slate-900: #0f172a; }
+        :root { --slate-950: #020617; }
         body { 
             background-color: var(--slate-950); 
             font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
-            margin: 0; height: 100vh; height: -webkit-fill-available; overflow: hidden;
+            margin: 0; height: 100vh; overflow: hidden;
             -webkit-tap-highlight-color: transparent; user-select: none; color: white;
         }
-        .app-container { height: 100vh; height: -webkit-fill-available; display: flex; flex-direction: column; }
+        .app-container { height: 100vh; display: flex; flex-direction: column; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .scroll-hide::-webkit-scrollbar { display: none; }
         
-        /* Optimalisatie voor vlaggen op verzoek: Volledig rechthoekig en passend */
         .flag-card {
             aspect-ratio: 3 / 2;
             width: 100%;
@@ -41,15 +37,18 @@
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            border-radius: 0; /* Geen afgeronde hoeken */
+            border-radius: 1rem;
             background: #1e293b;
-            padding: 4px; /* Kleine padding zodat de vlag de rand niet raakt als hij 'contained' is */
+            padding: 4px;
         }
-        .flag-img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* Zorgt dat de volledige vlag zichtbaar is zonder bijsnijden */
+        .flag-img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.75rem; }
+
+        @keyframes levelUp {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
+        .animate-levelup { animation: levelUp 0.5s ease-out; }
     </style>
 </head>
 <body>
@@ -58,69 +57,22 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
+        const appId = 'myrthe-oefenmeester-v2';
+
         const germanLidlWords = [
             { nl: "De vergadering", de: "Besprechung" }, { nl: "De afspraak", de: "Termin" }, { nl: "De collega", de: "Kollege" }, { nl: "De afdeling", de: "Abteilung" },
             { nl: "Het kantoor", de: "Büro" }, { nl: "De e-mail", de: "E-Mail" }, { nl: "De bijlage", de: "Anhang" }, { nl: "Het verslag", de: "Protokoll" },
             { nl: "De deadline", de: "Frist" }, { nl: "De opdracht", de: "Auftrag" }, { nl: "De planning", de: "Planung" }, { nl: "De strategie", de: "Strategie" },
             { nl: "De doelstelling", de: "Zielsetzung" }, { nl: "Het project", de: "Projekt" }, { nl: "De feedback", de: "Rückmeldung" }, { nl: "De presentatie", de: "Präsentation" },
             { nl: "De inkoop", de: "Einkauf" }, { nl: "De leverancier", de: "Lieferant" }, { nl: "De onderhandeling", de: "Verhandlung" }, { nl: "De prijs", de: "Preis" },
-            { nl: "De korting", de: "Rabatt" }, { nl: "Het contract", de: "Vertrag" }, { nl: "De kwaliteit", de: "Qualität" }, { nl: "Het monster (product)", de: "Muster" },
-            { nl: "De verpakking", de: "Verpackung" }, { nl: "Het assortiment", de: "Sortiment" }, { nl: "De houdbaarheid", de: "Haltbarkeit" }, { nl: "De voorraad", de: "Lagerbestand" },
-            { nl: "De bestelling", de: "Bestellung" }, { nl: "De levering", de: "Lieferung" }, { nl: "De vrachtbrief", de: "Frachtbrief" }, { nl: "De douane", de: "Zoll" },
-            { nl: "De logistiek", de: "Logistik" }, { nl: "Het distributiecentrum", de: "Zentrallager" }, { nl: "De transportketen", de: "Lieferkette" }, { nl: "De vrachtwagen", de: "LKW" },
-            { nl: "De verzending", de: "Versand" }, { nl: "De opslag", de: "Lagerung" }, { nl: "Het magazijn", de: "Lager" }, { nl: "De pallet", de: "Palette" },
-            { nl: "De inventarisatie", de: "Inventur" }, { nl: "De routeplanning", de: "Tourenplanung" }, { nl: "De vertraging", de: "Verzögerung" }, { nl: "De capaciteit", de: "Kapazität" },
-            { nl: "De boekhouding", de: "Buchhaltung" }, { nl: "De factuur", de: "Rechnung" }, { nl: "De betaling", de: "Zahlung" }, { nl: "De winst", de: "Gewinn" },
-            { nl: "Het verlies", de: "Verlust" }, { nl: "De omzet", de: "Umsatz" }, { nl: "De begroting", de: "Budget" }, { nl: "De belastingen", de: "Steuern" },
-            { nl: "Het bankrekeningnummer", de: "Kontonummer" }, { nl: "De onkosten", de: "Ausgaben" }, { nl: "De analyse", de: "Analyse" }, { nl: "Het rapport", de: "Bericht" },
-            { nl: "De software", de: "Software" }, { nl: "De hardware", de: "Hardware" }, { nl: "De database", de: "Datenbank" }, { nl: "Het wachtwoord", de: "Passwort" },
-            { nl: "De verbinding", de: "Verbindung" }, { nl: "De systeembeheerder", de: "Systemadministrator" }, { nl: "De update", de: "Aktualisierung" }, { nl: "De storing", de: "Störung" },
-            { nl: "De laptop", de: "Laptop" }, { nl: "Het scherm", de: "Bildschirm" }, { nl: "De muis", de: "Maus" }, { nl: "Het toetsenbord", de: "Tastatur" },
-            { nl: "De sollicitatie", de: "Bewerbung" }, { nl: "Het interview", de: "Vorstellungsgespräch" }, { nl: "De werknemer", de: "Arbeitnehmer" }, { nl: "De werkgever", de: "Arbeitgeber" },
-            { nl: "Het salaris", de: "Gehalt" }, { nl: "De vakantie", de: "Urlaub" }, { nl: "De ziekte", de: "Krankheit" }, { nl: "De opleiding", de: "Fortbildung" },
-            { nl: "De overwerkuren", de: "Überstunden" }, { nl: "De ontslagname", de: "Kündigung" }, { nl: "Het team", de: "Team" }, { nl: "De motivatie", de: "Motivation" },
-            { nl: "De reclame", de: "Werbung" }, { nl: "De folder", de: "Prospekt" }, { nl: "De klant", de: "Kunde" }, { nl: "De doelgroep", de: "Zielgruppe" },
-            { nl: "De concurrentie", de: "Wettbewerb" }, { nl: "Het merk", de: "Marke" }, { nl: "De campagne", de: "Kampagne" }, { nl: "De website", de: "Webseite" },
-            { nl: "De social media", de: "Soziale Medien" }, { nl: "De nieuwsbrief", de: "Newsletter" }, { nl: "Het logo", de: "Logo" }, { nl: "Het imago", de: "Image" },
-            { nl: "De locatie", de: "Standort" }, { nl: "De huur", de: "Miete" }, { nl: "De bouw", de: "Bau" }, { nl: "De vergunning", de: "Genehmigung" },
-            { nl: "De renovatie", de: "Renovierung" }, { nl: "Het terrein", de: "Gelände" }, { nl: "De architect", de: "Architekt" }, { nl: "De parkeerplaats", de: "Parkplatz" },
-            { nl: "Het bureau", de: "Schreibtisch" }, { nl: "De stoel", de: "Stuhl" }, { nl: "De koffie", de: "Kaffee" }, { nl: "De lunchpauze", de: "Mittagspause" },
-            { nl: "De telefoon", de: "Telefon" }, { nl: "De printer", de: "Drucker" }, { nl: "Het papier", de: "Papier" }, { nl: "De map", de: "Ordner" },
-            { nl: "De pen", de: "Stift" }, { nl: "Het notitieblok", de: "Notizblock" }, { nl: "De agenda", de: "Kalender" }, { nl: "De klok", de: "Uhr" },
-            { nl: "De lift", de: "Aufzug" }, { nl: "De trap", de: "Treppe" }, { nl: "De gang", de: "Flur" }, { nl: "De ingang", de: "Eingang" },
-            { nl: "De uitgang", de: "Ausgang" }, { nl: "De vergaderruimte", de: "Besprechungsraum" }, { nl: "De receptie", de: "Empfang" }, { nl: "De sleutel", de: "Schlüssel" },
-            { nl: "De pas", de: "Ausweis" }, { nl: "De manager", de: "Leiter" }, { nl: "De chef", de: "Vorgesetzter" }, { nl: "De assistent", de: "Assistent" },
-            { nl: "De stagiair", de: "Praktikant" }, { nl: "De samenwerking", de: "Zusammenarbeit" }, { nl: "Het success", de: "Erfolg" }, { nl: "Het probleem", de: "Problem" },
-            { nl: "De oplossing", de: "Lösung" }, { nl: "De vraag", de: "Frage" }, { nl: "Het antwoord", de: "Antwort" }, { nl: "De discussie", de: "Diskussion" },
-            { nl: "De beslissing", de: "Entscheidung" }, { nl: "De verandering", de: "Veränderung" }, { nl: "De verbetering", de: "Verbesserung" }, { nl: "De controle", de: "Kontrolle" },
-            { nl: "De taak", de: "Aufgabe" }, { nl: "De verantwoordelijkheid", de: "Verantwortung" }, { nl: "De ervaring", de: "Erfahrung" }, { nl: "De kennis", de: "Wissen" },
-            { nl: "De vaardigheid", de: "Fähigkeit" }, { nl: "Het proces", de: "Prozess" }, { nl: "De structuur", de: "Struktur" }, { nl: "De efficiëntie", de: "Effizienz" },
-            { nl: "De documentatie", de: "Dokumentation" }, { nl: "Het bestand", de: "Datei" }, { nl: "De map (digitaal)", de: "Verzeichnis" }, { nl: "De cloud", de: "Cloud" },
-            { nl: "De backup", de: "Sicherung" }, { nl: "De browser", de: "Browser" }, { nl: "De link", de: "Link" }, { nl: "De download", de: "Download" },
-            { nl: "De upload", de: "Upload" }, { nl: "De installatie", de: "Installation" }, { nl: "De configuratie", de: "Konfiguration" }, { nl: "De interface", de: "Schnittstelle" },
-            { nl: "De gebruiker", de: "Benutzer" }, { nl: "De admin", de: "Administrator" }, { nl: "De veiligheid", de: "Sicherheit" }, { nl: "De privacy", de: "Datenschutz" },
-            { nl: "De wet", de: "Gesetz" }, { nl: "De regel", de: "Regel" }, { nl: "De richtlijn", de: "Richtlinie" }, { nl: "De standaard", de: "Standard" },
-            { nl: "Het risico", de: "Risiko" }, { nl: "De verzekering", de: "Versicherung" }, { nl: "De belastingsdienst", de: "Finanzamt" }, { nl: "De douanecontrole", de: "Zollkontrolle" },
-            { nl: "De import", de: "Import" }, { nl: "De export", de: "Export" }, { nl: "De wereldhandel", de: "Welthandel" }, { nl: "De markt", de: "Market" },
-            { nl: "De vraag (economisch)", de: "Nachfrage" }, { nl: "Het aanbod", de: "Angebot" }, { nl: "De consument", de: "Verbraucher" }, { nl: "De trend", de: "Trend" },
-            { nl: "De innovatie", de: "Innovation" }, { nl: "De duurzaamheid", de: "Nachhaltigkeit" }, { nl: "Het milieu", de: "Umwelt" }, { nl: "De energie", de: "Energie" },
-            { nl: "De kostenreductie", de: "Kostensenkung" }, { nl: "De optimalisatie", de: "Optimierung" }, { nl: "De productiviteit", de: "Produktivität" }, { nl: "De groei", de: "Wachstum" },
-            { nl: "De investering", de: "Investition" }, { nl: "Het kapitaal", de: "Kapital" }, { nl: "De aandeelhouder", de: "Aktionär" }, { nl: "De jaarcijfers", de: "Jahresabschluss" },
-            { nl: "De audit", de: "Prüfung" }, { nl: "De compliance", de: "Einhaltung" }, { nl: "De ethiek", de: "Ethik" }, { nl: "De cultuur", de: "Kultur" },
-            { nl: "De visie", de: "Vision" }, { nl: "De missie", de: "Mission" }, { nl: "De kernwaarde", de: "Kernwert" }, { nl: "De samenleving", de: "Gesellschaft" },
-            { nl: "De globalisering", de: "Globalisierung" }, { nl: "De digitalisering", de: "Digitalisierung" }, { nl: "De automatisering", de: "Automatisierung" }, { nl: "De robotica", de: "Robotik" },
-            { nl: "De data-analyse", de: "Datenanalyse" }, { nl: "De statistiek", de: "Statistik" }, { nl: "De grafiek", de: "Grafik" }, { nl: "De tabel", de: "Tabelle" },
-            { nl: "De berekening", de: "Berechnung" }, { nl: "De schatting", de: "Schätzung" }, { nl: "Het budgetplan", de: "Haushaltsplan" }, { nl: "De prognose", de: "Prognose" },
-            { nl: "De herstructurering", de: "Umstrukturierung" }, { nl: "De fusie", de: "Fusion" }, { nl: "De overname", de: "Übernahme" }, { nl: "De partner", de: "Partner" },
-            { nl: "Het netwerk", de: "Netzwerk" }, { nl: "De connectie", de: "Verbindung" }, { nl: "De dialoog", de: "Dialog" }, { nl: "Het overleg", de: "Beratung" },
-            { nl: "De workshop", de: "Workshop" }, { nl: "De training", de: "Training" }, { nl: "De coaching", de: "Coaching" }, { nl: "De mentor", de: "Mentor" },
-            { nl: "De opvolger", de: "Nachfolger" }, { nl: "De pensioenleeftijd", de: "Rentenalter" }, { nl: "De bonus", de: "Bonus" }, { nl: "De promotie", de: "Beförderung" },
-            { nl: "De carriere", de: "Karriere" }, { nl: "De werk-privé balans", de: "Work-Life-Balance" }, { nl: "Het thuiskantoor", de: "Homeoffice" }, { nl: "De werktijd", de: "Arbeitzeit" },
-            { nl: "De deeltijdbaan", de: "Teilzeitjob" }, { nl: "De voltijdbaan", de: "Vollzeitjob" }, { nl: "De flexibiliteit", de: "Flexibilität" }, { nl: "De betrouwbaarheid", de: "Zuverlässigkeit" },
-            { nl: "De integriteit", de: "Integrität" }, { nl: "De loyaliteit", de: "Loyalität" }, { nl: "De ambitie", de: "Ehrgeiz" }, { nl: "De passie", de: "Leidenschaft" }
+            { nl: "De klant", de: "Kunde" }, { nl: "De korting", de: "Rabatt" }, { nl: "De factuur", de: "Rechnung" }, { nl: "De voorraad", de: "Lagerbestand" },
+            { nl: "De aanbieding", de: "Angebot" }, { nl: "De supermarkt", de: "Supermarkt" }, { nl: "De kassa", de: "Kasse" }, { nl: "De medewerker", de: "Mitarbeiter" },
+            { nl: "Het filiaal", de: "Filiale" }, { nl: "De manager", de: "Geschäftsführer" }, { nl: "Het magazijn", de: "Lager" }, { nl: "De vrachtwagen", de: "LKW" },
+            { nl: "Het product", de: "Produkt" }, { nl: "De kwaliteit", de: "Qualität" }, { nl: "De versheid", de: "Frische" }, { nl: "De verpakking", de: "Verpackung" },
+            { nl: "Het schap", de: "Regal" }, { nl: "De mand", de: "Korb" }, { nl: "De kar", de: "Einkaufswagen" }, { nl: "De bon", de: "Quittung" }
         ];
 
-        const Icon = ({ name, size = 24 }) => {
+        const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
@@ -129,29 +81,54 @@
                     iconElement.setAttribute('data-lucide', name);
                     iconElement.style.width = `${size}px`;
                     iconElement.style.height = `${size}px`;
+                    if (className) iconElement.setAttribute('class', className);
                     iconRef.current.appendChild(iconElement);
-                    window.lucide.createIcons({ attrs: { strokeWidth: 2, width: size, height: size } });
+                    window.lucide.createIcons();
                 }
-            }, [name, size]);
+            }, [name, size, className]);
             return <span ref={iconRef} className="inline-flex items-center justify-center" />;
         };
 
         const App = () => {
             const [view, setView] = useState('menu');
-            const [score, setScore] = useState(() => Number(localStorage.getItem('myrthe_score')) || 0);
-            const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('myrthe_level')) || 1);
-            const [mathStreak, setMathStreak] = useState(0);
-            const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false });
-            const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
-            const [userAnswer, setUserAnswer] = useState('');
-            const [feedback, setFeedback] = useState(null);
-            const [currentProblem, setCurrentProblem] = useState(null);
             const [countries, setCountries] = useState([]);
+            const [feedback, setFeedback] = useState(null);
+            const [lastWords, setLastWords] = useState([]); 
+            
+            const [stats, setStats] = useState(() => {
+                const saved = localStorage.getItem(`${appId}_stats`);
+                return saved ? JSON.parse(saved) : {
+                    xp: 0,
+                    level: 1,
+                    streak: 0,
+                    lastDate: null,
+                    correctMath: 0,
+                    correctGerman: 0,
+                    correctFlags: 0,
+                    mathLevel: 1
+                };
+            });
 
-            useEffect(() => { 
-                localStorage.setItem('myrthe_score', score); 
-                localStorage.setItem('myrthe_level', mathLevel); 
-            }, [score, mathLevel]);
+            // Exponentiële XP drempel
+            const getXpThreshold = (level) => Math.floor(100 * Math.pow(1.1, level - 1));
+
+            useEffect(() => {
+                localStorage.setItem(`${appId}_stats`, JSON.stringify(stats));
+            }, [stats]);
+
+            useEffect(() => {
+                const today = new Date().toDateString();
+                if (stats.lastDate !== today) {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const wasYesterday = stats.lastDate === yesterday.toDateString();
+                    setStats(prev => ({
+                        ...prev,
+                        lastDate: today,
+                        streak: wasYesterday ? prev.streak + 1 : (prev.lastDate ? 1 : 0)
+                    }));
+                }
+            }, []);
 
             useEffect(() => {
                 fetch('https://restcountries.com/v3.1/all?fields=name,flags,translations')
@@ -165,14 +142,35 @@
                     });
             }, []);
 
+            const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
+            const [userAnswer, setUserAnswer] = useState('');
+            const [mathStreak, setMathStreak] = useState(0);
+            const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false });
+            const [currentProblem, setCurrentProblem] = useState(null);
+
+            const addXP = (amount, categoryKey) => {
+                setStats(prev => {
+                    let newXP = prev.xp + amount;
+                    let currentLevel = prev.level;
+                    let threshold = getXpThreshold(currentLevel);
+                    while (newXP >= threshold) {
+                        newXP -= threshold;
+                        currentLevel++;
+                        threshold = getXpThreshold(currentLevel);
+                        setFeedback({ type: 'success', text: `LEVEL UP! Level ${currentLevel} 🎉` });
+                    }
+                    return { ...prev, xp: newXP, level: currentLevel, [categoryKey]: prev[categoryKey] + 1 };
+                });
+            };
+
             const generateMath = useCallback(() => {
                 const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
                 const type = ops.length > 0 ? ops[Math.floor(Math.random() * ops.length)] : 'plus';
                 let n1, n2, q, a;
-                const minVal = Math.max(2, Math.floor(mathLevel / 2));
+                const minVal = Math.max(2, Math.floor(stats.mathLevel / 2));
                 switch(type) {
-                    case 'plus': n1 = Math.floor(Math.random() * (mathLevel * 15)) + minVal; n2 = Math.floor(Math.random() * (mathLevel * 15)) + minVal; q = `${n1} + ${n2}`; a = n1 + n2; break;
-                    case 'min': n1 = Math.floor(Math.random() * (mathLevel * 15)) + (minVal * 2); n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal; q = `${n1} - ${n2}`; a = n1 - n2; break;
+                    case 'plus': n1 = Math.floor(Math.random() * (stats.mathLevel * 15)) + minVal; n2 = Math.floor(Math.random() * (stats.mathLevel * 15)) + minVal; q = `${n1} + ${n2}`; a = n1 + n2; break;
+                    case 'min': n1 = Math.floor(Math.random() * (stats.mathLevel * 15)) + (minVal * 2); n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal; q = `${n1} - ${n2}`; a = n1 - n2; break;
                     case 'keer': n1 = Math.floor(Math.random() * 10) + 1; n2 = Math.floor(Math.random() * 10) + 1; q = `${n1} × ${n2}`; a = n1 * n2; break;
                     case 'gedeeld': n2 = Math.floor(Math.random() * 9) + 2; a = Math.floor(Math.random() * 10) + 1; n1 = n2 * a; q = `${n1} : ${n2}`; break;
                 }
@@ -180,10 +178,14 @@
                 setUserAnswer('');
                 setFeedback(null);
                 setView('math-game');
-            }, [selectedTypes, mathLevel]);
+            }, [selectedTypes, stats.mathLevel]);
 
             const generateGerman = () => {
-                const correct = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)];
+                const availableWords = germanLidlWords.filter(w => !lastWords.includes(w.de));
+                const pool = availableWords.length > 0 ? availableWords : germanLidlWords;
+                const correct = pool[Math.floor(Math.random() * pool.length)];
+                setLastWords(prev => [correct.de, ...prev].slice(0, 10));
+
                 let opts = [correct.de];
                 while(opts.length < 4) {
                     const r = germanLidlWords[Math.floor(Math.random() * germanLidlWords.length)].de;
@@ -207,72 +209,141 @@
                 setView('flags-game');
             };
 
-            const handleAnswer = (ans) => {
+            const handleChoiceAnswer = (ans) => {
                 if (feedback) return;
-
-                let isCorrect = false;
                 
                 if (currentProblem.category === 'german') {
-                    isCorrect = currentProblem.de === ans;
+                    if (ans === currentProblem.de) {
+                        addXP(15, 'correctGerman');
+                        setFeedback({ type: 'success', text: 'Super gedaan! 🌟' });
+                        setTimeout(generateGerman, 800);
+                    } else {
+                        setFeedback({ type: 'error', text: `Jammer! Het was ${currentProblem.de}` });
+                        setTimeout(() => setFeedback(null), 2500);
+                    }
                 } else if (currentProblem.category === 'flags') {
-                    isCorrect = currentProblem.name === ans.name;
-                }
-
-                if (isCorrect) {
-                    setScore(s => s + 5);
-                    setFeedback({ type: 'success', text: 'Heel goed! 🌟' });
-                    setTimeout(() => {
-                        if (currentProblem.category === 'german') generateGerman();
-                        if (currentProblem.category === 'flags') generateFlagProblem();
-                    }, 800);
-                } else {
-                    const failText = currentProblem.category === 'flags' 
-                        ? `Helaas, dit was ${ans.name}` 
-                        : `Helaas, dit was ${ans}`;
-                    setFeedback({ type: 'error', text: failText });
-                    setTimeout(() => setFeedback(null), 2500);
+                    // ans is hier het geselecteerde land object {name, flag}
+                    if (ans.name === currentProblem.name) {
+                        addXP(15, 'correctFlags');
+                        setFeedback({ type: 'success', text: 'Lekker bezig! 🌍' });
+                        setTimeout(generateFlagProblem, 800);
+                    } else {
+                        // De verbeterde error feedback voor vlaggen
+                        setFeedback({ type: 'error', text: `Nee, dit is de vlag van ${ans.name}` });
+                        setTimeout(() => setFeedback(null), 2500);
+                    }
                 }
             };
 
-            const Header = ({ title, onBack, showLevel = false }) => (
-                <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-slate-900/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
-                    <button onClick={onBack} className="text-slate-400 p-2 -ml-2"><Icon name="chevron-left" size={28} /></button>
-                    <div className="flex flex-col items-center">
-                        <h2 className="text-[10px] font-black uppercase tracking-[0.2em] italic text-slate-500">{title}</h2>
-                        {showLevel && <span className="text-[10px] font-bold text-indigo-400">Level {mathLevel}</span>}
+            const Header = ({ title, onBack }) => (
+                <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-slate-900/90 border-b border-white/5 sticky top-0 z-50">
+                    <button onClick={onBack} className="text-slate-400 p-2 active:scale-90"><Icon name="chevron-left" size={24} /></button>
+                    <div className="text-center">
+                        <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">{title}</h2>
+                        <div className="flex items-center justify-center gap-1 text-orange-500 font-bold text-xs">
+                            <Icon name="flame" size={14} /> {stats.streak} dag streak
+                        </div>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full border border-orange-500/20">
-                        <Icon name="trophy" size={14} /><span className="text-xs font-black">{score}</span>
-                    </div>
+                    <button onClick={() => setView('achievements')} className="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20 font-black text-xs active:scale-95">
+                        LVL {stats.level}
+                    </button>
                 </div>
             );
 
             if (view === 'menu') {
+                const threshold = getXpThreshold(stats.level);
                 return (
-                    <div className="app-container flex flex-col items-center justify-center p-6 text-center">
-                        <h1 className="text-4xl font-black italic uppercase mb-8 tracking-tighter leading-tight">Myrthe's<br/>Oefenmeester</h1>
-                        <div className="grid grid-cols-1 gap-4 w-full max-w-sm">
-                            <button onClick={() => setView('math-setup')} className="glass p-5 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg flex-shrink-0"><Icon name="calculator" /></div>
-                                <div className="text-left overflow-hidden">
-                                    <span className="block text-lg font-bold">Rekenen</span>
-                                    <span className="text-[10px] uppercase text-slate-400 block truncate">Plus, min, keer & gedeeld</span>
+                    <div className="app-container p-6 flex flex-col items-center overflow-y-auto scroll-hide">
+                        <div className="w-full max-w-sm pt-8 mb-8 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg font-black text-xl">M</div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase">Dag Myrthe!</p>
+                                    <p className="font-bold flex items-center gap-1">Level {stats.level} <Icon name="sparkles" size={14} className="text-yellow-400"/></p>
+                                </div>
+                            </div>
+                            <button onClick={() => setView('achievements')} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-orange-400 active:scale-90">
+                                <Icon name="trophy" size={20} />
+                            </button>
+                        </div>
+
+                        <div className="w-full max-w-sm glass p-5 rounded-[2rem] mb-8">
+                            <div className="flex justify-between items-end mb-2 text-[10px] font-black uppercase tracking-widest">
+                                <span className="text-slate-400 italic">Level {stats.level}</span>
+                                <span className="text-indigo-400 font-bold">{stats.xp} / {threshold} XP</span>
+                            </div>
+                            <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                                <div className="bg-indigo-500 h-full transition-all duration-700" style={{ width: `${(stats.xp / threshold) * 100}%` }} />
+                            </div>
+                        </div>
+
+                        <h3 className="w-full max-w-sm text-left text-xl font-black italic uppercase mb-4">Trainingen</h3>
+                        <div className="grid grid-cols-1 gap-4 w-full max-w-sm mb-10">
+                            <button onClick={() => setView('math-setup')} className="glass p-5 rounded-[2rem] flex items-center gap-4 active:scale-95 transition-all text-left">
+                                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" /></div>
+                                <div>
+                                    <span className="block font-bold text-lg uppercase italic">Rekenen</span>
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold">{stats.correctMath} opgelost</span>
                                 </div>
                             </button>
-                            <button onClick={generateGerman} className="glass p-5 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-rose-600 p-4 rounded-2xl shadow-lg flex-shrink-0"><Icon name="briefcase" /></div>
-                                <div className="text-left overflow-hidden">
-                                    <span className="block text-lg font-bold">Lidl Duits (Kantoor)</span>
-                                    <span className="text-[10px] uppercase text-slate-400 block truncate">200+ woorden kantoorwerk</span>
+                            <button onClick={generateGerman} className="glass p-5 rounded-[2rem] flex items-center gap-4 active:scale-95 transition-all text-left">
+                                <div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="briefcase" /></div>
+                                <div>
+                                    <span className="block font-bold text-lg uppercase italic">Lidl Duits</span>
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold text-rose-300">{stats.correctGerman} woorden</span>
                                 </div>
                             </button>
-                            <button onClick={generateFlagProblem} className="glass p-5 rounded-3xl flex items-center gap-4 active:scale-95 transition-all">
-                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg flex-shrink-0"><Icon name="flag" /></div>
-                                <div className="text-left overflow-hidden">
-                                    <span className="block text-lg font-bold">Vlaggen</span>
-                                    <span className="text-[10px] uppercase text-slate-400 block truncate">Landen van de wereld</span>
+                            <button onClick={generateFlagProblem} className="glass p-5 rounded-[2rem] flex items-center gap-4 active:scale-95 transition-all text-left">
+                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" /></div>
+                                <div>
+                                    <span className="block font-bold text-lg uppercase italic">Vlaggen</span>
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold">{stats.correctFlags} landen</span>
                                 </div>
                             </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'achievements') {
+                return (
+                    <div className="app-container">
+                        <Header title="Prestaties" onBack={() => setView('menu')} />
+                        <div className="flex-1 overflow-y-auto p-6 scroll-hide">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="glass p-6 rounded-3xl text-center shadow-xl">
+                                    <div className="text-orange-500 mb-2 flex justify-center"><Icon name="flame" size={32} /></div>
+                                    <div className="text-2xl font-black">{stats.streak}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Dagen Streak</div>
+                                </div>
+                                <div className="glass p-6 rounded-3xl text-center shadow-xl">
+                                    <div className="text-indigo-500 mb-2 flex justify-center"><Icon name="star" size={32} /></div>
+                                    <div className="text-2xl font-black">{stats.level}</div>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase">Huidig Level</div>
+                                </div>
+                            </div>
+
+                            <h3 className="mt-8 mb-4 text-sm font-black uppercase tracking-widest text-slate-500 italic">Badges te verdienen</h3>
+                            <div className="space-y-3">
+                                {[
+                                    { label: 'Rekenwonder', count: stats.correctMath, targets: [10, 50, 200], icon: 'calculator', color: 'bg-indigo-600' },
+                                    { label: 'Duits Expert', count: stats.correctGerman, targets: [10, 50, 200], icon: 'briefcase', color: 'bg-rose-600' },
+                                    { label: 'Wereldreiziger', count: stats.correctFlags, targets: [10, 50, 200], icon: 'flag', color: 'bg-emerald-600' }
+                                ].map(badge => (
+                                    <div key={badge.label} className="glass p-4 rounded-2xl flex items-center gap-4 border border-white/5">
+                                        <div className={`${badge.color} p-3 rounded-xl`}><Icon name={badge.icon} size={20} /></div>
+                                        <div className="flex-1">
+                                            <p className="font-bold text-sm">{badge.label}</p>
+                                            <div className="flex gap-1 mt-1">
+                                                {badge.targets.map(t => (
+                                                    <div key={t} className={`h-1.5 flex-1 rounded-full ${badge.count >= t ? badge.color : 'bg-slate-800'}`} />
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="text-right text-[10px] font-black">{badge.count}</div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 );
@@ -281,17 +352,18 @@
             if (view === 'math-setup') {
                 return (
                     <div className="app-container">
-                        <Header title="Instellingen" onBack={() => setView('menu')} />
-                        <div className="p-8 flex flex-col gap-4">
-                            <h3 className="text-xl font-black italic uppercase">Kies je sommen:</h3>
+                        <Header title="Rekenen" onBack={() => setView('menu')} />
+                        <div className="p-8 flex flex-col gap-4 flex-1 justify-center">
+                            <h3 className="text-2xl font-black italic uppercase text-center mb-4">Kies je sommen</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 {['plus', 'min', 'keer', 'gedeeld'].map(t => (
-                                    <button key={t} onClick={() => setSelectedTypes(p => ({...p, [t]: !p[t]}))} className={`p-6 rounded-3xl border-2 transition-all font-black uppercase text-[10px] ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400' : 'bg-slate-900 border-transparent opacity-40'}`}>
+                                    <button key={t} onClick={() => setSelectedTypes(p => ({...p, [t]: !p[t]}))} className={`p-8 rounded-[2rem] border-2 transition-all font-black uppercase text-xs flex flex-col items-center gap-2 ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400' : 'bg-slate-900 border-white/5 opacity-40'}`}>
+                                        <span className="text-2xl">{t === 'plus' ? '+' : t === 'min' ? '-' : t === 'keer' ? '×' : ':'}</span>
                                         {t}
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={generateMath} className="mt-4 w-full bg-white text-slate-950 py-5 rounded-3xl font-black text-xl italic uppercase">Start! 🚀</button>
+                            <button onClick={generateMath} className="mt-8 bg-white text-slate-950 p-6 rounded-[2rem] font-black text-xl italic uppercase shadow-xl active:scale-95 transition-all">Start! 🚀</button>
                         </div>
                     </div>
                 );
@@ -300,40 +372,46 @@
             if (view === 'math-game') {
                 return (
                     <div className="app-container">
-                        <Header title="Rekenen" showLevel={true} onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col items-center justify-center p-6">
-                            <div className="flex gap-2 mb-4">
+                        <Header title="Sommen maken" onBack={() => setView('menu')} />
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                            <div className="flex gap-2 mb-6">
                                 {[...Array(5)].map((_, i) => (
-                                    <div key={i} className={`w-3 h-3 rounded-full ${i < mathStreak ? 'bg-indigo-400 shadow-lg' : 'bg-slate-800'}`} />
+                                    <div key={i} className={`w-3 h-3 rounded-full ${i < mathStreak ? 'bg-indigo-400' : 'bg-slate-800'}`} />
                                 ))}
                             </div>
-                            <div className="text-5xl font-black mb-6">{mathProblem.q}</div>
-                            <div className="text-5xl font-mono bg-slate-900 w-full max-w-[200px] py-4 rounded-3xl border-2 border-slate-800 flex items-center justify-center text-indigo-400">
+                            <div className="text-6xl font-black mb-10 tracking-tighter drop-shadow-2xl">{mathProblem.q}</div>
+                            <div className="text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2.5rem] border-2 border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">
                                 {userAnswer || "?"}
                             </div>
-                            <div className="h-10 mt-4 text-sm font-black uppercase text-center px-4">
-                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
+                            <div className="h-16 mt-6">
+                                {feedback && <div className={`font-black uppercase text-center px-8 py-3 rounded-2xl shadow-xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}
                             </div>
                         </div>
-                        <div className="bg-slate-900/90 p-6 pb-10 rounded-t-[2.5rem]">
+                        <div className="bg-slate-900/95 p-6 pb-12 rounded-t-[3rem] glass border-t border-white/5">
                             <div className="numpad-grid max-w-xs mx-auto">
                                 {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                     <button key={b} onClick={() => {
                                         if(b === 'OK') {
                                             if(parseInt(userAnswer) === mathProblem.a) {
-                                                const ns = mathStreak + 1;
-                                                setScore(s => s + 2);
-                                                if(ns >= 5) { setMathLevel(l => l + 1); setMathStreak(0); setFeedback({type:'success', text:'LEVEL UP!'}); }
-                                                else { setMathStreak(ns); setFeedback({type:'success', text:'Lekker!'}); }
+                                                addXP(20, 'correctMath');
+                                                setMathStreak(s => {
+                                                    const n = s + 1;
+                                                    if(n >= 5) {
+                                                        setStats(prev => ({...prev, mathLevel: prev.mathLevel + 1}));
+                                                        return 0;
+                                                    }
+                                                    return n;
+                                                });
+                                                setFeedback({type:'success', text:'Lekker hoor! ✨'});
                                                 setTimeout(generateMath, 800);
                                             } else {
-                                                setFeedback({type:'error', text:`Fout! Het was ${mathProblem.a}`});
+                                                setFeedback({type:'error', text:`Nee, het was ${mathProblem.a}`});
                                                 setMathStreak(0);
-                                                setTimeout(() => {setFeedback(null); setUserAnswer('');}, 1500);
+                                                setTimeout(() => {setFeedback(null); setUserAnswer('');}, 2000);
                                             }
                                         } else if(b === 'C') setUserAnswer('');
                                         else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                    }} className="h-14 rounded-2xl bg-white/5 font-black text-xl">
+                                    }} className="h-16 rounded-2xl bg-white/5 font-black text-2xl active:bg-white/20 transition-colors shadow-lg border border-white/5">
                                         {b}
                                     </button>
                                 ))}
@@ -343,51 +421,28 @@
                 );
             }
 
-            if (view === 'german-game') {
+            if (view === 'german-game' || view === 'flags-game') {
+                const isFlags = view === 'flags-game';
                 return (
                     <div className="app-container">
-                        <Header title="Lidl Duits" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col p-8 items-center justify-center gap-8 text-center scroll-hide overflow-y-auto">
-                            <div className="flex flex-col gap-2">
-                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Wat is het Duitse woord voor:</span>
-                                <h2 className="text-3xl font-black italic">{currentProblem.nl}</h2>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
-                                {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-5 rounded-2xl font-bold text-base active:bg-rose-600/20 active:border-rose-500 transition-all">
-                                        {o}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="h-10 text-sm font-black uppercase">
-                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            if (view === 'flags-game') {
-                return (
-                    <div className="app-container">
-                        <Header title="Vlaggen Quiz" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col p-6 items-center justify-start gap-4 text-center overflow-y-auto pt-10">
-                            <div className="flex flex-col gap-1 mb-2">
-                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest italic">Welke vlag hoort bij:</span>
-                                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-emerald-400 leading-tight">{currentProblem.name}</h2>
+                        <Header title={isFlags ? "Vlaggen" : "Lidl Duits"} onBack={() => setView('menu')} />
+                        <div className="flex-1 flex flex-col p-8 items-center justify-start gap-6 text-center overflow-y-auto pt-12 scroll-hide">
+                            <div className="space-y-2">
+                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest italic">{isFlags ? "Zoek de vlag van" : "Wat is het Duitse woord voor"}</span>
+                                <h2 className={`text-4xl font-black italic tracking-tighter leading-tight ${isFlags ? 'text-emerald-400' : 'text-rose-400'}`}>{isFlags ? currentProblem.name : currentProblem.nl}</h2>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-3 w-full max-w-xs mx-auto">
+                            <div className={`grid ${isFlags ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full max-w-sm`}>
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleAnswer(o)} className="flag-card glass border-2 border-slate-700 active:border-emerald-500 transition-all">
-                                        <img src={o.flag} className="flag-img" alt="Vlag" />
+                                    <button key={i} onClick={() => handleChoiceAnswer(o)} className={`${isFlags ? 'flag-card shadow-2xl active:scale-95' : 'p-6 rounded-[1.5rem] font-bold text-lg active:scale-95'} glass border-2 border-transparent active:border-white/40 transition-all`}>
+                                        {isFlags ? <img src={o.flag} className="flag-img" /> : o}
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="min-h-[3rem] w-full flex items-center justify-center px-4 mt-2">
+                            <div className="h-16 mt-4">
                                 {feedback && (
-                                    <div className={`text-[11px] font-black uppercase px-5 py-2.5 rounded-2xl shadow-xl ${feedback.type === 'success' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                                    <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl leading-tight ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>
                                         {feedback.text}
                                     </div>
                                 )}
