@@ -5,19 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Myrthe's Oefenmeester</title>
 
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png">
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Oefenmeester">
-
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
@@ -54,7 +47,7 @@
         }
         .animate-levelup { animation: levelUp 0.5s ease-out; }
         
-        #map { height: 200px; width: 100%; border-radius: 1rem; margin-top: 1rem; }
+        #map-container { height: 250px; width: 100%; border-radius: 1rem; margin-top: 1rem; border: 2px solid rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
@@ -63,7 +56,7 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        const appId = 'myrthe-oefenmeester-v3';
+        const appId = 'myrthe-oefenmeester-v4';
 
         const germanLidlWords = [
             { nl: "De vergadering", de: "Besprechung" }, { nl: "De afspraak", de: "Termin" }, { nl: "De collega", de: "Kollege" }, { nl: "De afdeling", de: "Abteilung" },
@@ -96,36 +89,41 @@
         };
 
         const MapModal = ({ country, onClose }) => {
-            const mapRef = useRef(null);
             const mapInstance = useRef(null);
 
             useEffect(() => {
-                if (country && country.latlng && mapRef.current) {
-                    if (mapInstance.current) {
-                        mapInstance.current.remove();
+                // Kleine timeout zodat de DOM rendering van de container klaar is
+                const timer = setTimeout(() => {
+                    if (country && country.latlng) {
+                        if (mapInstance.current) {
+                            mapInstance.current.remove();
+                        }
+                        mapInstance.current = L.map('map-container').setView(country.latlng, 4);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap'
+                        }).addTo(mapInstance.current);
+                        L.marker(country.latlng).addTo(mapInstance.current);
+                        
+                        // Forceer resize check voor Leaflet
+                        setTimeout(() => { mapInstance.current.invalidateSize(); }, 200);
                     }
-                    mapInstance.current = L.map('map').setView(country.latlng, 4);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© OpenStreetMap'
-                    }).addTo(mapInstance.current);
-                    L.marker(country.latlng).addTo(mapInstance.current);
-                }
+                }, 100);
+
                 return () => {
+                    clearTimeout(timer);
                     if (mapInstance.current) mapInstance.current.remove();
                 };
             }, [country]);
 
             return (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
                     <div className="w-full max-w-sm glass rounded-[2.5rem] p-6 flex flex-col items-center gap-4">
                         <div className="flex justify-between w-full items-center">
                             <h3 className="text-xl font-black italic uppercase text-emerald-400">{country.name}</h3>
                             <button onClick={onClose} className="bg-white/10 p-2 rounded-full"><Icon name="x" size={20} /></button>
                         </div>
-                        <div className="w-full aspect-[3/2] rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative">
-                            <div id="map" className="w-full h-full"></div>
-                        </div>
-                        <button onClick={onClose} className="w-full bg-emerald-600 p-4 rounded-2xl font-black uppercase text-sm mt-2">Volgende</button>
+                        <div id="map-container" className="shadow-2xl"></div>
+                        <button onClick={onClose} className="w-full bg-emerald-600 p-4 rounded-2xl font-black uppercase text-sm mt-2 active:scale-95">Volgende</button>
                     </div>
                 </div>
             );
@@ -136,7 +134,7 @@
             const [countries, setCountries] = useState([]);
             const [feedback, setFeedback] = useState(null);
             const [lastWords, setLastWords] = useState([]); 
-            const [showMap, setShowMap] = useState(null); // Voor het tonen van de kaart na antwoord
+            const [showMap, setShowMap] = useState(null);
             
             const [stats, setStats] = useState(() => {
                 const saved = localStorage.getItem(`${appId}_stats`);
@@ -169,15 +167,22 @@
                             name: c.translations.nld?.common || c.name.common,
                             flag: c.flags.svg,
                             latlng: c.latlng
-                        })).filter(c => c.name && c.flag);
+                        })).filter(c => c.name && c.flag && c.latlng.length > 0);
                         setCountries(formatted);
                     });
             }, []);
 
             const speakGerman = (text) => {
+                window.speechSynthesis.cancel(); // Stop huidige spraak
                 const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Zoek specifiek naar een Duitse stem
+                const voices = window.speechSynthesis.getVoices();
+                const deVoice = voices.find(v => v.lang.startsWith('de')) || voices.find(v => v.name.includes('German'));
+                
+                if (deVoice) utterance.voice = deVoice;
                 utterance.lang = 'de-DE';
-                utterance.rate = 0.9;
+                utterance.rate = 0.85;
                 window.speechSynthesis.speak(utterance);
             };
 
@@ -234,16 +239,20 @@
                     const r = countries[Math.floor(Math.random() * countries.length)];
                     if(!opts.find(o => o.name === r.name)) opts.push(r);
                 }
-                // Randomise mode: 0 = Zoek vlag bij naam, 1 = Zoek naam bij vlag
-                const mode = Math.random() > 0.5 ? 1 : 0;
+                const mode = Math.random() > 0.5 ? 1 : 0; 
                 return { ...correct, opts: opts.sort(() => Math.random() - 0.5), category: 'flags', mode };
             };
 
             const handleChoiceAnswer = (ans) => {
                 if (feedback) return;
-                const isCorrect = (currentProblem.category === 'german') 
-                    ? ans === currentProblem.de 
-                    : (currentProblem.mode === 0 ? ans.name === currentProblem.name : ans === currentProblem.name);
+                
+                let isCorrect = false;
+                if (currentProblem.category === 'german') {
+                    isCorrect = ans === currentProblem.de;
+                } else {
+                    // Bij vlaggen: mode 0 is vlag kiezen bij naam, mode 1 is naam kiezen bij vlag
+                    isCorrect = (currentProblem.mode === 0) ? (ans.name === currentProblem.name) : (ans === currentProblem.name);
+                }
 
                 if (view === 'exam-choice') {
                     nextExamQuestion(isCorrect);
@@ -289,15 +298,14 @@
                 setShowMap(null);
                 if (view === 'flag-streak' && feedback?.type === 'error') {
                     setView('menu');
-                } else if (currentProblem.category === 'flags') {
+                } else {
                     setCurrentProblem(generateFlagProblemData());
                 }
                 setFeedback(null);
             };
 
             const startMathGame = useCallback(() => {
-                const prob = generateMathProblem(stats.mathLevel);
-                setMathProblem(prob);
+                setMathProblem(generateMathProblem(stats.mathLevel));
                 setUserAnswer('');
                 setFeedback(null);
                 setView('math-game');
@@ -328,11 +336,8 @@
                     setMathProblem(generateMathProblem(stats.mathLevel, ['plus', 'min', 'keer', 'gedeeld']));
                     setUserAnswer('');
                     setView('exam-math');
-                } else if (type === 'german') {
-                    setCurrentProblem(generateGermanProblem());
-                    setView('exam-choice');
-                } else if (type === 'flags') {
-                    setCurrentProblem(generateFlagProblemData());
+                } else {
+                    setCurrentProblem(type === 'german' ? generateGermanProblem() : generateFlagProblemData());
                     setView('exam-choice');
                 }
                 setFeedback(null);
@@ -342,34 +347,27 @@
                 const newCorrectCount = isCorrect ? examState.correctCount + 1 : examState.correctCount;
                 if (examState.currentQuestion >= examState.totalQuestions) {
                     const percentage = Math.round((newCorrectCount / examState.totalQuestions) * 100);
-                    const passed = percentage >= 85;
-                    if (passed) addXP(200);
-                    setExamState(prev => ({ ...prev, correctCount: newCorrectCount, finished: true, passed, percentage }));
+                    setExamState(prev => ({ ...prev, correctCount: newCorrectCount, finished: true, passed: percentage >= 85, percentage }));
                     setView('exam-result');
                 } else {
                     setExamState(prev => ({ ...prev, currentQuestion: prev.currentQuestion + 1, correctCount: newCorrectCount }));
                     if (examState.type === 'math') {
                         setMathProblem(generateMathProblem(examState.level, ['plus', 'min', 'keer', 'gedeeld']));
                         setUserAnswer('');
-                    } else if (examState.type === 'german') {
-                        setCurrentProblem(generateGermanProblem());
-                    } else if (examState.type === 'flags') {
-                        setCurrentProblem(generateFlagProblemData());
+                    } else {
+                        setCurrentProblem(examState.type === 'german' ? generateGermanProblem() : generateFlagProblemData());
                     }
                 }
             };
 
             const handleMathAnswer = () => {
-                if (feedback) return;
+                if (feedback || !userAnswer) return;
                 const isCorrect = parseInt(userAnswer) === mathProblem.a;
                 if (view === 'exam-math') { nextExamQuestion(isCorrect); return; }
                 if (isCorrect) {
                     addXP(20, 'correctMath');
-                    setMathStreak(s => {
-                        const n = s + 1;
-                        if(n >= 5) { setStats(prev => ({...prev, mathLevel: prev.mathLevel + 1})); return 0; }
-                        return n;
-                    });
+                    setMathStreak(s => (s + 1 >= 5 ? 0 : s + 1));
+                    if (mathStreak + 1 >= 5) setStats(prev => ({...prev, mathLevel: prev.mathLevel + 1}));
                     setFeedback({type:'success', text:'Lekker hoor! ✨'});
                     setTimeout(startMathGame, 800);
                 } else {
@@ -388,65 +386,31 @@
                             <Icon name="flame" size={14} /> {stats.streak} dag streak
                         </div>
                     </div>
-                    <button onClick={() => setView('achievements')} className="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20 font-black text-xs active:scale-95">
+                    <button onClick={() => setView('achievements')} className="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20 font-black text-xs">
                         LVL {stats.level}
                     </button>
                 </div>
             );
 
-            // --- Views ---
             if (view === 'menu') {
                 return (
                     <div className="app-container p-6 flex flex-col items-center overflow-y-auto scroll-hide">
                         <div className="w-full max-w-sm pt-8 mb-8 flex justify-between items-center">
                             <div className="flex items-center gap-3">
                                 <div className="w-14 h-14 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center shadow-lg font-black text-2xl">M</div>
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase">Myrthe's</p>
-                                    <p className="text-xl font-black italic uppercase tracking-tighter">Oefenmeester</p>
-                                </div>
+                                <div><p className="text-[10px] font-black text-slate-500 uppercase">Myrthe's</p><p className="text-xl font-black italic uppercase tracking-tighter">Oefenmeester</p></div>
                             </div>
-                            <button onClick={() => setView('achievements')} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-orange-400">
-                                <Icon name="trophy" size={20} />
-                            </button>
+                            <button onClick={() => setView('achievements')} className="w-12 h-12 glass rounded-2xl flex items-center justify-center text-orange-400"><Icon name="trophy" size={20} /></button>
                         </div>
                         <div className="w-full max-w-sm space-y-4">
                             <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest">Kies een vak</h3>
-                            <button onClick={() => setView('math-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 transition-all border-l-4 border-indigo-500">
-                                <div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" size={28} /></div>
-                                <div className="text-left"><span className="block text-xl font-black italic uppercase">Rekenen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Plus, min, keer & gedeeld</span></div>
-                            </button>
-                            <button onClick={() => setView('german-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 transition-all border-l-4 border-rose-500">
-                                <div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="languages" size={28} /></div>
-                                <div className="text-left"><span className="block text-xl font-black italic uppercase">Duits</span><span className="text-[10px] font-bold text-slate-500 uppercase">Lidl woorden oefenen</span></div>
-                            </button>
-                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 transition-all border-l-4 border-emerald-500">
-                                <div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div>
-                                <div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Landen van de wereld</span></div>
-                            </button>
+                            <button onClick={() => setView('math-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-indigo-500"><div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Rekenen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Plus, min, keer & gedeeld</span></div></button>
+                            <button onClick={() => setView('german-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-rose-500"><div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="languages" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Duits</span><span className="text-[10px] font-bold text-slate-500 uppercase">Lidl woorden oefenen</span></div></button>
+                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Landen van de wereld</span></div></button>
                         </div>
                     </div>
                 );
             }
-
-            const CategoryView = ({ title, color, options }) => (
-                <div className="app-container">
-                    <Header title={title} onBack={() => setView('menu')} />
-                    <div className="p-8 flex flex-col gap-6 justify-center flex-1 max-w-sm mx-auto w-full">
-                        <div className="text-center mb-4"><h3 className="text-2xl font-black italic uppercase tracking-tighter">Wat wil je doen?</h3></div>
-                        {options.map((opt, i) => (
-                            <button key={i} onClick={opt.action} className={`w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all border-b-4 border-${color}-500/50`}>
-                                <div className={`bg-${color}-600 p-4 rounded-2xl shadow-lg`}><Icon name={opt.icon} size={24} /></div>
-                                <div className="text-left"><span className="block text-xl font-black italic uppercase">{opt.name}</span><span className="text-[10px] font-bold text-slate-500 uppercase">{opt.desc}</span></div>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            );
-
-            if (view === 'math-category') return <CategoryView title="Rekenen" color="indigo" options={[{ name: 'Training', desc: 'Oefenen op jouw niveau', icon: 'graduation-cap', action: () => setView('math-setup') }, { name: 'Toets', desc: '40 vragen • 85% om te slagen', icon: 'scroll-text', action: () => startExam('math') }]} />;
-            if (view === 'german-category') return <CategoryView title="Duits" color="rose" options={[{ name: 'Oefenen', desc: 'Nieuwe woorden leren', icon: 'book-open', action: startGermanGame }, { name: 'Toets', desc: '40 vragen • 85% om te slagen', icon: 'scroll-text', action: () => startExam('german') }]} />;
-            if (view === 'flags-category') return <CategoryView title="Vlaggen" color="emerald" options={[{ name: 'Oefenen', desc: 'Beide kanten op', icon: 'globe', action: startFlagGame }, { name: 'Toets', desc: '40 vlaggen • 85% om te slagen', icon: 'scroll-text', action: () => startExam('flags') }, { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: startStreakMode }]} />;
 
             if (view === 'math-setup') {
                 return (
@@ -461,7 +425,7 @@
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={startMathGame} className="mt-8 bg-white text-slate-950 p-6 rounded-[2rem] font-black text-xl italic uppercase shadow-xl active:scale-95 transition-all">Start Oefenen! 🚀</button>
+                            <button onClick={startMathGame} className="mt-8 bg-white text-slate-950 p-6 rounded-[2rem] font-black text-xl italic uppercase shadow-xl active:scale-95">Start Oefenen! 🚀</button>
                         </div>
                     </div>
                 );
@@ -478,20 +442,19 @@
                             <div className="text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2.5rem] border-2 border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">{userAnswer || "?"}</div>
                             <div className="h-16 mt-6">{feedback && <div className={`font-black uppercase text-center px-8 py-3 rounded-2xl shadow-xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}</div>
                         </div>
-                        <div className="bg-slate-900/95 p-6 pb-12 rounded-t-[3rem] glass border-t border-white/5"><div className="numpad-grid max-w-xs mx-auto">{[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (<button key={b} onClick={() => { if(b === 'OK') handleMathAnswer(); else if(b === 'C') setUserAnswer(''); else if(userAnswer.length < 5) setUserAnswer(userAnswer + b); }} className="h-16 rounded-2xl bg-white/5 font-black text-2xl active:bg-white/20 transition-colors shadow-lg border border-white/5">{b}</button>))}</div></div>
+                        <div className="bg-slate-900/95 p-6 pb-12 rounded-t-[3rem] glass border-t border-white/5"><div className="numpad-grid max-w-xs mx-auto">{[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (<button key={b} onClick={() => { if(b === 'OK') handleMathAnswer(); else if(b === 'C') setUserAnswer(''); else if(userAnswer.length < 5) setUserAnswer(userAnswer + b); }} className="h-16 rounded-2xl bg-white/5 font-black text-2xl active:bg-white/20 shadow-lg border border-white/5">{b}</button>))}</div></div>
                     </div>
                 );
             }
 
             if (view === 'german-game' || view === 'flags-game' || view === 'exam-choice' || view === 'flag-streak') {
                 const isFlags = (currentProblem.category === 'flags');
-                const isExam = view === 'exam-choice';
                 const isStreak = view === 'flag-streak';
 
                 return (
                     <div className="app-container">
                         {showMap && <MapModal country={showMap} onClose={closeMap} />}
-                        <Header title={isExam ? `Toets: ${examState.currentQuestion}/40` : (isStreak ? "Streak Mode" : (isFlags ? "Vlaggen" : "Duits"))} onBack={() => setView('menu')} />
+                        <Header title={isStreak ? "Streak Mode" : (isFlags ? "Vlaggen" : "Duits")} onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col p-8 items-center justify-start gap-6 text-center overflow-y-auto pt-8 scroll-hide">
                             {isStreak && <div className="bg-orange-500/20 text-orange-400 px-4 py-2 rounded-full font-black text-sm border border-orange-500/30">Streak: {streakCount}</div>}
                             
@@ -514,14 +477,14 @@
                             
                             <div className={`grid ${isFlags && currentProblem.mode === 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full max-w-sm`}>
                                 {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleChoiceAnswer(o)} className={`${isFlags && currentProblem.mode === 0 ? 'flag-card shadow-2xl active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} glass border-2 border-transparent active:border-white/40 transition-all`}>
+                                    <button key={i} onClick={() => handleChoiceAnswer(o)} className={`${isFlags && currentProblem.mode === 0 ? 'flag-card active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} glass border-2 border-transparent active:border-white/40 transition-all`}>
                                         {isFlags ? (currentProblem.mode === 0 ? <img src={o.flag} className="flag-img" /> : o.name) : o}
                                     </button>
                                 ))}
                             </div>
 
                             <div className="h-16 mt-4">
-                                {feedback && <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl leading-tight ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}
+                                {feedback && <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}
                             </div>
                         </div>
                     </div>
@@ -534,8 +497,7 @@
                         <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-6 shadow-2xl ${examState.passed ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-rose-500 shadow-rose-500/20'}`}><Icon name={examState.passed ? "check" : "x"} size={64} /></div>
                         <h2 className="text-4xl font-black italic uppercase mb-2 tracking-tighter">{examState.passed ? 'Geslaagd!' : 'Gezakt...'}</h2>
                         <div className="text-6xl font-black text-white/90 mb-4">{examState.percentage}%</div>
-                        <p className="text-slate-400 mb-10 max-w-xs">Je had {examState.correctCount} van de 40 vragen goed.{examState.passed ? ' Super gedaan Myrthe! Je hebt de toets gehaald.' : ' Helaas, je hebt 85% nodig om te slagen.'}</p>
-                        <button onClick={() => setView('menu')} className="w-full max-w-sm bg-indigo-600 p-5 rounded-3xl font-black uppercase italic shadow-xl active:scale-95">Terug naar menu</button>
+                        <button onClick={() => setView('menu')} className="w-full max-w-sm bg-indigo-600 p-5 rounded-3xl font-black uppercase italic active:scale-95">Terug naar menu</button>
                     </div>
                 );
             }
@@ -546,10 +508,33 @@
                         <Header title="Statistieken" onBack={() => setView('menu')} />
                         <div className="flex-1 overflow-y-auto p-6 scroll-hide">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="glass p-6 rounded-3xl text-center shadow-xl"><div className="text-orange-500 mb-2 flex justify-center"><Icon name="flame" size={32} /></div><div className="text-2xl font-black">{stats.streak}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Dagen Streak</div></div>
+                                <div className="glass p-6 rounded-3xl text-center shadow-xl"><div className="text-orange-500 mb-2 flex justify-center"><Icon name="flame" size={32} /></div><div className="text-2xl font-black">{stats.streak}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Streak</div></div>
                                 <div className="glass p-6 rounded-3xl text-center shadow-xl"><div className="text-indigo-500 mb-2 flex justify-center"><Icon name="star" size={32} /></div><div className="text-2xl font-black">{stats.level}</div><div className="text-[10px] font-bold text-slate-500 uppercase">Level</div></div>
                             </div>
-                            <div className="mt-4 glass p-6 rounded-3xl border-orange-500/20 border flex items-center justify-between"><div className="text-left"><div className="text-[10px] font-bold text-slate-500 uppercase">Best Vlaggen Streak</div><div className="text-2xl font-black text-orange-400">{stats.flagBestStreak}</div></div><Icon name="zap" size={32} className="text-orange-500 opacity-50" /></div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Fallback for missing category views
+            if (view.includes('-category')) {
+                const type = view.split('-')[0];
+                const config = {
+                    math: { title: "Rekenen", color: "indigo", opts: [{ name: 'Training', desc: 'Oefenen', icon: 'graduation-cap', action: () => setView('math-setup') }, { name: 'Toets', desc: '40 vragen', icon: 'scroll-text', action: () => startExam('math') }] },
+                    german: { title: "Duits", color: "rose", opts: [{ name: 'Oefenen', desc: 'Woorden leren', icon: 'book-open', action: startGermanGame }, { name: 'Toets', desc: '40 vragen', icon: 'scroll-text', action: () => startExam('german') }] },
+                    flags: { title: "Vlaggen", color: "emerald", opts: [{ name: 'Oefenen', desc: 'Alle landen', icon: 'globe', action: startFlagGame }, { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: startStreakMode }, { name: 'Toets', desc: '40 landen', icon: 'scroll-text', action: () => startExam('flags') }] }
+                }[type];
+                
+                return (
+                    <div className="app-container">
+                        <Header title={config.title} onBack={() => setView('menu')} />
+                        <div className="p-8 flex flex-col gap-6 justify-center flex-1 max-w-sm mx-auto w-full">
+                            {config.opts.map((opt, i) => (
+                                <button key={i} onClick={opt.action} className={`w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 border-b-4 border-${config.color}-500/50`}>
+                                    <div className={`bg-${config.color}-600 p-4 rounded-2xl shadow-lg`}><Icon name={opt.icon} size={24} /></div>
+                                    <div className="text-left"><span className="block text-xl font-black italic uppercase">{opt.name}</span><span className="text-[10px] font-bold text-slate-500 uppercase">{opt.desc}</span></div>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 );
