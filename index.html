@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Test Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: white; font-family: sans-serif; margin: 0; overflow: hidden; }
+        .page { display: none; height: 100vh; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+        .page.active { display: flex; }
+        .btn-main { width: 100%; max-width: 300px; background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); padding: 25px; border-radius: 24px; margin-bottom: 15px; display: flex; align-items: center; gap: 20px; transition: transform 0.1s; }
+        .btn-main:active { transform: scale(0.95); }
+        .flag-grid { display: grid; grid-cols: 2; gap: 15px; width: 100%; max-width: 400px; grid-template-columns: repeat(2, 1fr); }
+        .flag-btn { background: #1e293b; padding: 10px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); aspect-ratio: 3/2; }
+        .flag-btn img { width: 100%; h-full; object-fit: cover; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <!-- HOOFDMENU -->
+    <div id="menu" class="page active">
+        <div class="text-6xl mb-4">✨</div>
+        <h1 class="text-4xl font-black mb-10">MYRTHE'S APP</h1>
+        
+        <button onclick="showPage('math')" class="btn-main">
+            <span class="text-4xl">🔢</span>
+            <div class="text-left"><b class="block text-xl">Rekenen</b><span class="opacity-50 text-xs">Plus, min en meer</span></div>
+        </button>
+
+        <button onclick="showPage('flags')" class="btn-main">
+            <span class="text-4xl">🚩</span>
+            <div class="text-left"><b class="block text-xl">Vlaggen</b><span class="opacity-50 text-xs">Landen herkennen</span></div>
+        </button>
+    </div>
+
+    <!-- REKENEN (SIMPEL VOORBEELD) -->
+    <div id="math" class="page">
+        <button onclick="showPage('menu')" class="absolute top-10 left-6 text-slate-500 font-bold">← TERUG</button>
+        <p class="text-indigo-400 font-bold mb-2 uppercase tracking-widest text-xs">Level 1</p>
+        <h2 class="text-7xl font-black mb-8">8 + 4</h2>
+        <div class="bg-slate-800 w-40 h-20 rounded-2xl flex items-center justify-center text-4xl font-mono text-indigo-300 mb-8 border-2 border-slate-700">?</div>
+        <p class="text-slate-500 text-sm">Tik op OK om te controleren</p>
+        <button class="mt-10 bg-indigo-600 px-12 py-4 rounded-2xl font-black">OK</button>
+    </div>
+
+    <!-- VLAGGEN (SIMPEL VOORBEELD) -->
+    <div id="flags" class="page">
+        <button onclick="showPage('menu')" class="absolute top-10 left-6 text-slate-500 font-bold">← TERUG</button>
+        <p class="text-emerald-400 font-bold mb-2 uppercase tracking-widest text-xs">Vlaggen Quiz</p>
+        <h2 class="text-3xl font-black mb-8">Welk land is Nederland?</h2>
+        
+        <div class="flag-grid">
+            <button onclick="alert('Goed zo!')" class="flag-btn"><img src="https://flagcdn.com/nl.svg"></button>
+            <button onclick="alert('Helaas!')" class="flag-btn"><img src="https://flagcdn.com/be.svg"></button>
+            <button onclick="alert('Helaas!')" class="flag-btn"><img src="https://flagcdn.com/de.svg"></button>
+            <button onclick="alert('Helaas!')" class="flag-btn"><img src="https://flagcdn.com/fr.svg"></button>
+        </div>
+    </div>
+
+    <script>
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+    </script>
+</body>
+</html>
