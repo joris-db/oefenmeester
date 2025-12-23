@@ -19,9 +19,9 @@
     <link rel="manifest" href='data:application/manifest+json,{"name":"Myrthes Oefenmeester","short_name":"Oefenmeester","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#020617","icons":[{"src":"https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png","sizes":"512x512","type":"image/png"}]}'>
 
     <!-- start webpushr tracking code --> 
-    <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.src = "https://cdn.webpushr.com/app.min.js";
-    fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk-alternative'));
-    webpushr('init','BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw','https://joris-db.github.io/oefenmeester/webpushr-sw.js','/oefenmeester/');</script>
+    <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";
+    fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
+    webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });</script>
     <!-- end webpushr tracking code -->
     
     <!-- Scripts -->
@@ -74,6 +74,10 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* Custom scrollbar for small overflow areas */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -89,6 +93,50 @@
                 .catch(err => console.log('SW registration failed:', err));
             });
         }
+
+        const topoData = {
+            nederland: [
+                { q: "Wat is de hoofdstad van Friesland?", a: "Leeuwarden" },
+                { q: "In welke provincie ligt Eindhoven?", a: "Noord-Brabant" },
+                { q: "Wat is de hoofdstad van Overijssel?", a: "Zwolle" },
+                { q: "Welke rivier stroomt door Rotterdam?", a: "Maas" },
+                { q: "Wat is de hoofdstad van Zeeland?", a: "Middelburg" },
+                { q: "In welke provincie liggen de hunebedden?", a: "Drenthe" },
+                { q: "Wat is de hoofdstad van Gelderland?", a: "Arnhem" },
+                { q: "Welke rivier stroomt langs Arnhem en Nijmegen?", a: "Rijn" },
+                { q: "Wat is de hoofdstad van Noord-Holland?", a: "Haarlem" },
+                { q: "In welke provincie ligt Assen?", a: "Drenthe" }
+            ],
+            wereld: [
+                { q: "Wat is de hoofdstad van Duitsland?", a: "Berlijn" },
+                { q: "In welk land ligt de stad Madrid?", a: "Spanje" },
+                { q: "Wat is de hoofdstad van Frankrijk?", a: "Parijs" },
+                { q: "In welk land ligt Sydney?", a: "Australië" },
+                { q: "Wat is de hoofdstad van Italië?", a: "Rome" },
+                { q: "In welk land ligt de stad Toronto?", a: "Canada" },
+                { q: "Wat is de hoofdstad van Portugal?", a: "Lissabon" },
+                { q: "In welk land ligt Rio de Janeiro?", a: "Brazilië" },
+                { q: "Wat is de hoofdstad van Japan?", a: "Tokio" },
+                { q: "Welke stad wordt de 'Big Apple' genoemd?", a: "New York" }
+            ]
+        };
+
+        const germanData = [
+            { nl: "Kan ik u helpen?", de: "Kann ich Ihnen helfen?" },
+            { nl: "Dat kost vijf euro.", de: "Das kostet fünf Euro." },
+            { nl: "Wilt u een bonnetje?", de: "Möchten Sie de Kassenbon?" },
+            { nl: "Fijne dag nog!", de: "Schönen Tag noch!" },
+            { nl: "Alstublieft (bij geven).", de: "Bitte sehr." },
+            { nl: "Dank u wel.", de: "Vielen Dank." },
+            { nl: "Waar zijn de eieren?", de: "Wo sind die Eier?" },
+            { nl: "Momentje alstublieft.", de: "Einen Moment, bitte." },
+            { nl: "Heeft u een klantenkaart?", de: "Haben Sie eine Kundenkarte?" },
+            { nl: "Alleen pinnen, a.u.b.", de: "Nur Kartenzahlung, bitte." },
+            { nl: "Ingang", de: "Eingang" },
+            { nl: "Uitgang", de: "Ausgang" },
+            { nl: "Kassa", de: "Kasse" },
+            { nl: "Aanbieding", de: "Angebot" }
+        ];
 
         const Icon = ({ name, size = 24, className = "" }) => {
             const iconRef = useRef(null);
@@ -121,6 +169,10 @@
             const [feedback, setFeedback] = useState(null);
             const [countries, setCountries] = useState([]);
             const [flagProblem, setFlagProblem] = useState(null);
+            
+            // Nieuwe States
+            const [topoProblem, setTopoProblem] = useState(null);
+            const [germanProblem, setGermanProblem] = useState(null);
 
             useEffect(() => {
                 localStorage.setItem('myrthe_score', score);
@@ -144,62 +196,27 @@
                 const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
                 const type = ops.length > 0 ? ops[Math.floor(Math.random() * ops.length)] : 'plus';
                 let n1, n2, q, a;
-                
-                const getMinVal = () => Math.max(2, Math.floor(mathLevel / 2));
-                const minVal = getMinVal();
+                const minVal = Math.max(2, Math.floor(mathLevel / 2));
 
                 switch(type) {
                     case 'plus':
-                        const pRange = mathLevel * 15;
-                        n1 = Math.floor(Math.random() * pRange) + minVal;
-                        n2 = Math.floor(Math.random() * pRange) + minVal;
-                        q = `${n1} + ${n2}`; a = n1 + n2;
-                        break;
+                        n1 = Math.floor(Math.random() * (mathLevel * 15)) + minVal;
+                        n2 = Math.floor(Math.random() * (mathLevel * 15)) + minVal;
+                        q = `${n1} + ${n2}`; a = n1 + n2; break;
                     case 'min':
-                        const mRange = mathLevel * 15;
-                        n1 = Math.floor(Math.random() * mRange) + (minVal * 2);
+                        n1 = Math.floor(Math.random() * (mathLevel * 15)) + (minVal * 2);
                         n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal;
-                        q = `${n1} - ${n2}`; a = n1 - n2;
-                        break;
+                        q = `${n1} - ${n2}`; a = n1 - n2; break;
                     case 'keer':
-                        let kMax;
-                        if (mathLevel < 5) kMax = 10;
-                        else if (mathLevel < 15) kMax = 25;
-                        else kMax = 100;
-
-                        const getKVal = () => {
-                            let val = Math.floor(Math.random() * (kMax - minVal + 1)) + minVal;
-                            if (mathLevel > 3 && mathLevel < 12 && Math.random() > 0.4) {
-                                val = Math.floor(Math.random() * 4) + 6;
-                            }
-                            return val;
-                        };
-
-                        n1 = getKVal();
-                        n2 = getKVal();
-                        q = `${n1} × ${n2}`; a = n1 * n2;
-                        break;
+                        let kMax = mathLevel < 5 ? 10 : mathLevel < 15 ? 25 : 100;
+                        n1 = Math.floor(Math.random() * (kMax - minVal + 1)) + minVal;
+                        n2 = Math.floor(Math.random() * (kMax - minVal + 1)) + minVal;
+                        q = `${n1} × ${n2}`; a = n1 * n2; break;
                     case 'gedeeld':
-                        let dMax;
-                        if (mathLevel < 5) dMax = 10;
-                        else if (mathLevel < 15) dMax = 25;
-                        else dMax = 100;
-
-                        const getDVal = () => {
-                            let val = Math.floor(Math.random() * (dMax - minVal + 1)) + minVal;
-                            if (mathLevel > 3 && mathLevel < 12 && Math.random() > 0.4) {
-                                val = Math.floor(Math.random() * 4) + 6;
-                            }
-                            return val;
-                        };
-
-                        n2 = getDVal();
-                        a = getDVal(); 
-                        n1 = n2 * a;
-                        q = `${n1} : ${n2}`;
-                        break;
-                    default:
-                        q = '2 + 2'; a = 4;
+                        let dMax = mathLevel < 5 ? 10 : mathLevel < 15 ? 25 : 100;
+                        n2 = Math.floor(Math.random() * (dMax - minVal + 1)) + minVal;
+                        a = Math.floor(Math.random() * (dMax - minVal + 1)) + minVal;
+                        n1 = n2 * a; q = `${n1} : ${n2}`; break;
                 }
                 setMathProblem({ q, a });
                 setUserAnswer('');
@@ -218,6 +235,32 @@
                 setFeedback(null);
             }, [countries]);
 
+            const generateTopo = useCallback((category = 'mix') => {
+                let pool = [];
+                if (category === 'mix') pool = [...topoData.nederland, ...topoData.wereld];
+                else pool = topoData[category];
+                
+                const correct = pool[Math.floor(Math.random() * pool.length)];
+                let opts = [correct.a];
+                while(opts.length < 4) {
+                    const r = pool[Math.floor(Math.random() * pool.length)].a;
+                    if(!opts.includes(r)) opts.push(r);
+                }
+                setTopoProblem({ q: correct.q, a: correct.a, opts: opts.sort(() => Math.random() - 0.5) });
+                setFeedback(null);
+            }, []);
+
+            const generateGerman = useCallback(() => {
+                const correct = germanData[Math.floor(Math.random() * germanData.length)];
+                let opts = [correct.de];
+                while(opts.length < 4) {
+                    const r = germanData[Math.floor(Math.random() * germanData.length)].de;
+                    if(!opts.includes(r)) opts.push(r);
+                }
+                setGermanProblem({ q: correct.nl, a: correct.de, opts: opts.sort(() => Math.random() - 0.5) });
+                setFeedback(null);
+            }, []);
+
             const Header = ({ title, onBack, showLevel = false }) => (
                 <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-slate-900/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
                     <button onClick={onBack} className="text-slate-400 active:text-white transition-colors p-2 -ml-2">
@@ -235,35 +278,31 @@
             );
 
             if (view === 'menu') {
+                const menuItems = [
+                    { id: 'math-setup', title: 'Rekenen', icon: 'calculator', color: 'bg-indigo-600', shadow: 'shadow-indigo-500/20', sub: `Level ${mathLevel}` },
+                    { id: 'flags', title: 'Vlaggen', icon: 'flag', color: 'bg-emerald-600', shadow: 'shadow-emerald-500/20', sub: 'Wereldreis', action: generateFlag },
+                    { id: 'topo-setup', title: 'Topografie', icon: 'map', color: 'bg-amber-600', shadow: 'shadow-amber-500/20', sub: 'Steden & Landen' },
+                    { id: 'german', title: 'Lidl Duits', icon: 'languages', color: 'bg-rose-600', shadow: 'shadow-rose-500/20', sub: 'Klantcontact', action: generateGerman }
+                ];
+
                 return (
                     <div className="app-container bg-slate-950">
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                            <div className="relative mb-6">
-                                <div className="absolute inset-0 bg-indigo-500 blur-3xl opacity-20 rounded-full animate-pulse"></div>
-                                <div className="text-8xl relative drop-shadow-2xl">✨</div>
-                            </div>
-                            <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-10 leading-tight">Myrthe's<br/>Oefenmeester</h1>
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                            <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-8 leading-tight">Myrthe's<br/>Oefenmeester</h1>
                             
-                            <div className="w-full max-w-sm space-y-5">
-                                <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 text-left group text-white">
-                                    <div className="bg-indigo-600 p-4 rounded-2xl group-hover:rotate-6 transition-transform shadow-lg shadow-indigo-600/30 flex items-center justify-center">
-                                        <Icon name="calculator" size={24} />
-                                    </div>
-                                    <div>
-                                        <b className="block text-xl font-bold">Rekenen</b>
-                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Level {mathLevel} / 25</span>
-                                    </div>
-                                </button>
-
-                                <button onClick={() => { generateFlag(); setView('flags'); }} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 text-left group text-white">
-                                    <div className="bg-emerald-600 p-4 rounded-2xl group-hover:rotate-6 transition-transform shadow-lg shadow-emerald-600/30 flex items-center justify-center">
-                                        <Icon name="flag" size={24} />
-                                    </div>
-                                    <div>
-                                        <b className="block text-xl font-bold">Vlaggen</b>
-                                        <span className="text-[10px] text-slate-500 uppercase font-black tracking-widest">Wereldreis</span>
-                                    </div>
-                                </button>
+                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                                {menuItems.map(item => (
+                                    <button key={item.id} onClick={() => { if(item.action) item.action(); setView(item.id); }} 
+                                        className="glass p-5 rounded-[2rem] flex flex-col items-center gap-3 active:scale-95 transition-all shadow-xl text-white group relative overflow-hidden">
+                                        <div className={`${item.color} p-3 rounded-2xl shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}>
+                                            <Icon name={item.icon} size={24} />
+                                        </div>
+                                        <div className="text-center">
+                                            <b className="block text-sm font-bold">{item.title}</b>
+                                            <span className="text-[8px] text-slate-500 uppercase font-black tracking-widest">{item.sub}</span>
+                                        </div>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                         <div className="p-6 pb-10 flex justify-center opacity-30">
@@ -273,6 +312,7 @@
                 );
             }
 
+            // --- REKENEN SETUP ---
             if (view === 'math-setup') {
                 return (
                     <div className="app-container bg-slate-950">
@@ -288,25 +328,13 @@
                                     </button>
                                 ))}
                             </div>
-                            
-                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight text-white">Start Level (1-25)</h3>
-                            <div className="flex flex-wrap gap-3 mb-12">
-                                {[1, 5, 10, 15, 20].map(lvl => (
-                                    <button key={lvl} onClick={() => {setMathLevel(lvl); setMathStreak(0);}}
-                                        className={`flex-1 min-w-[60px] py-4 rounded-2xl border-2 font-black transition-all ${mathLevel === lvl ? 'bg-white text-slate-950 border-white' : 'border-white/10 text-white/40'}`}>
-                                        Lvl {lvl}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <button onClick={() => { generateMath(); setView('math-game'); }} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 py-6 rounded-3xl font-black text-xl shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all uppercase italic text-white">
-                                Let's Go! 🚀
-                            </button>
+                            <button onClick={() => { generateMath(); setView('math-game'); }} className="w-full bg-indigo-600 py-6 rounded-3xl font-black text-xl shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all uppercase italic text-white">Starten! 🚀</button>
                         </div>
                     </div>
                 );
             }
 
+            // --- REKENEN GAME ---
             if (view === 'math-game') {
                 return (
                     <div className="app-container bg-slate-950">
@@ -317,20 +345,15 @@
                                     <div key={i} className={`w-3 h-3 rounded-full transition-all duration-500 ${i < mathStreak ? 'bg-indigo-400 scale-125 shadow-lg shadow-indigo-500/50' : 'bg-slate-800'}`} />
                                 ))}
                             </div>
-                            <div className="text-5xl font-black mb-6 tracking-tighter pop-in leading-tight text-center text-white">{mathProblem.q}</div>
-                            <div className={`text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2rem] border-2 transition-all flex items-center justify-center shadow-inner ${feedback?.type === 'success' ? 'border-emerald-500 text-emerald-400' : feedback?.type === 'error' ? 'border-rose-500 text-rose-400' : 'border-slate-800 text-indigo-400'}`}>
-                                {userAnswer || <span className="opacity-10 animate-pulse">?</span>}
+                            <div className="text-5xl font-black mb-6 tracking-tighter pop-in text-white">{mathProblem.q}</div>
+                            <div className={`text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2rem] border-2 flex items-center justify-center shadow-inner ${feedback?.type === 'success' ? 'border-emerald-500 text-emerald-400' : feedback?.type === 'error' ? 'border-rose-500 text-rose-400' : 'border-slate-800 text-indigo-400'}`}>
+                                {userAnswer || "?"}
                             </div>
-                            <div className="h-10 mt-4 flex items-center justify-center">
-                                {feedback && (
-                                    <div className={`text-sm font-black uppercase tracking-widest feedback-slide ${feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {feedback.text}
-                                    </div>
-                                )}
+                            <div className="h-10 mt-4 text-sm font-black uppercase tracking-widest text-center">
+                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
-                        
-                        <div className="bg-slate-900/90 backdrop-blur-2xl px-6 pt-6 pb-10 rounded-t-[2.5rem] border-t border-white/5 shadow-[0_-20px_50px_rgba(0,0,0,0.5)]">
+                        <div className="bg-slate-900/90 p-6 pb-10 rounded-t-[2.5rem] border-t border-white/5">
                             <div className="numpad-grid max-w-xs mx-auto">
                                 {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                     <button key={b} onClick={() => {
@@ -339,25 +362,19 @@
                                             if(parseInt(userAnswer) === mathProblem.a) {
                                                 const newStreak = mathStreak + 1;
                                                 setScore(s => s + 1);
-                                                if (newStreak >= 5) {
-                                                    setFeedback({ type: 'success', text: 'Level Up! 🚀' });
-                                                    setMathLevel(l => Math.min(l + 1, 25)); 
-                                                    setMathStreak(0);
-                                                } else {
-                                                    setFeedback({ type: 'success', text: 'Top gedaan! ✨' });
-                                                    setMathStreak(newStreak);
-                                                }
+                                                if (newStreak >= 5) { setMathLevel(l => Math.min(l+1,25)); setMathStreak(0); setFeedback({type:'success', text:'LEVEL UP! 🚀'}); }
+                                                else { setMathStreak(newStreak); setFeedback({type:'success', text:'TOP! ✨'}); }
                                                 setTimeout(generateMath, 800);
                                             } else {
-                                                setFeedback({ type: 'error', text: `Nee, het was ${mathProblem.a}` });
-                                                setMathStreak(0); 
+                                                setFeedback({ type: 'error', text: `FOUT! HET WAS ${mathProblem.a}` });
+                                                setMathStreak(0);
                                                 setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 1500);
                                             }
                                         }
                                         else if(b === 'C') setUserAnswer('');
                                         else if(userAnswer.length < 6) setUserAnswer(userAnswer + b);
-                                    }} className={`h-14 rounded-2xl text-xl font-black active:scale-90 transition-all flex items-center justify-center text-white ${b === 'OK' ? 'bg-indigo-600 shadow-lg shadow-indigo-600/40' : 'bg-white/5 border border-white/5'}`}>
-                                        {b === 'OK' ? <Icon name="check" size={24} /> : b}
+                                    }} className="h-14 rounded-2xl text-xl font-black bg-white/5 border border-white/5 active:scale-90 transition-all text-white">
+                                        {b}
                                     </button>
                                 ))}
                             </div>
@@ -366,11 +383,12 @@
                 );
             }
 
+            // --- VLAGGEN ---
             if (view === 'flags') {
                 return (
                     <div className="app-container bg-slate-950">
                         <Header title="Vlaggen" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 text-center overflow-y-auto">
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 text-center">
                             <div className="space-y-1">
                                 <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] uppercase">Zoek de vlag van</p>
                                 <h2 className="text-3xl font-black italic uppercase leading-none tracking-tighter text-indigo-400">{flagProblem?.q}</h2>
@@ -379,28 +397,110 @@
                                 {flagProblem?.opts.map((o, i) => (
                                     <button key={i} onClick={() => {
                                         if (o.name === flagProblem.a) {
-                                            setFeedback({ type: 'success', text: 'Helemaal goed! 🌍' }); 
-                                            setScore(s => s + 2); 
+                                            setScore(s => s + 2); setFeedback({ type: 'success', text: 'Helemaal goed! 🌍' });
                                             setTimeout(generateFlag, 800);
                                         } else {
-                                            setFeedback({ type: 'error', text: 'Fout! Dat is ' + o.name }); 
+                                            setFeedback({ type: 'error', text: 'Fout! Dat is ' + o.name });
                                             setTimeout(() => setFeedback(null), 1500);
                                         }
-                                    }} className="aspect-[3/2] glass rounded-3xl p-1.5 active:scale-95 border border-white/10 overflow-hidden shadow-2xl transition-all">
+                                    }} className="aspect-[3/2] glass rounded-3xl p-1.5 active:scale-95 border border-white/10 overflow-hidden shadow-2xl">
                                         <img src={o.flag} className="w-full h-full object-cover rounded-[1.2rem]" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10">
-                                {feedback && (
-                                    <div className={`text-sm font-black uppercase tracking-widest feedback-slide ${feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {feedback.text}
-                                    </div>
-                                )}
+                            <div className="h-10 text-sm font-black uppercase tracking-widest text-center">
+                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
-                        <div className="p-4 flex justify-center opacity-10">
-                            <Icon name="globe" size={16} />
+                    </div>
+                );
+            }
+
+            // --- TOPOGRAFIE SETUP ---
+            if (view === 'topo-setup') {
+                return (
+                    <div className="app-container bg-slate-950">
+                        <Header title="Topografie" onBack={() => setView('menu')} />
+                        <div className="flex-1 p-8 max-w-sm mx-auto w-full flex flex-col justify-center gap-4">
+                            <h3 className="text-xl font-black mb-4 uppercase italic tracking-tight text-white">Kies Categorie</h3>
+                            <button onClick={() => { generateTopo('nederland'); setView('topo-game'); }} className="w-full glass p-6 rounded-3xl text-left border-l-4 border-amber-500">
+                                <b className="block text-lg">Nederland</b>
+                                <span className="text-[10px] text-slate-500 font-black uppercase">Provincies & Steden</span>
+                            </button>
+                            <button onClick={() => { generateTopo('wereld'); setView('topo-game'); }} className="w-full glass p-6 rounded-3xl text-left border-l-4 border-emerald-500">
+                                <b className="block text-lg">Wereld</b>
+                                <span className="text-[10px] text-slate-500 font-black uppercase">Landen & Hoofdsteden</span>
+                            </button>
+                            <button onClick={() => { generateTopo('mix'); setView('topo-game'); }} className="w-full glass p-6 rounded-3xl text-left border-l-4 border-indigo-500">
+                                <b className="block text-lg">Mix</b>
+                                <span className="text-[10px] text-slate-500 font-black uppercase">Alles door elkaar</span>
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- TOPOGRAFIE GAME ---
+            if (view === 'topo-game') {
+                return (
+                    <div className="app-container bg-slate-950">
+                        <Header title="Topografie" onBack={() => setView('topo-setup')} />
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
+                            <div className="space-y-2">
+                                <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] uppercase italic">Beantwoord de vraag:</p>
+                                <h2 className="text-2xl font-black italic uppercase leading-tight tracking-tight text-white">{topoProblem?.q}</h2>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
+                                {topoProblem?.opts.map((o, i) => (
+                                    <button key={i} onClick={() => {
+                                        if (o === topoProblem.a) {
+                                            setScore(s => s + 2); setFeedback({ type: 'success', text: 'SUPER! 🏆' });
+                                            setTimeout(() => generateTopo('mix'), 800);
+                                        } else {
+                                            setFeedback({ type: 'error', text: `Helaas! Het was ${topoProblem.a}` });
+                                            setTimeout(() => setFeedback(null), 2000);
+                                        }
+                                    }} className="glass p-5 rounded-2xl active:scale-95 transition-all text-sm font-bold border border-white/5 hover:bg-white/10 text-white">
+                                        {o}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="h-10 text-sm font-black uppercase tracking-widest text-center">
+                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- GERMAN GAME (LIDL) ---
+            if (view === 'german') {
+                return (
+                    <div className="app-container bg-slate-950">
+                        <Header title="Lidl Duits" onBack={() => setView('menu')} />
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
+                            <div className="space-y-2">
+                                <div className="bg-yellow-400/10 text-yellow-400 px-3 py-1 rounded-full text-[10px] font-black uppercase inline-block mb-2">Vertaal naar het Duits</div>
+                                <h2 className="text-3xl font-black italic uppercase leading-none tracking-tighter text-white">{germanProblem?.q}</h2>
+                            </div>
+                            <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
+                                {germanProblem?.opts.map((o, i) => (
+                                    <button key={i} onClick={() => {
+                                        if (o === germanProblem.a) {
+                                            setScore(s => s + 3); setFeedback({ type: 'success', text: 'Sehr gut! 🥨' });
+                                            setTimeout(generateGerman, 1000);
+                                        } else {
+                                            setFeedback({ type: 'error', text: `Nein! Es ist: ${germanProblem.a}` });
+                                            setTimeout(() => setFeedback(null), 2500);
+                                        }
+                                    }} className="glass p-5 rounded-2xl active:scale-95 transition-all text-sm font-bold border border-white/5 hover:bg-white/10 text-white">
+                                        {o}
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="h-10 text-sm font-black uppercase tracking-widest text-center">
+                                {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
+                            </div>
                         </div>
                     </div>
                 );
