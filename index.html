@@ -41,6 +41,11 @@
             display: flex; align-items: center; justify-content: center;
             height: 100vh; color: white; font-weight: bold; font-size: 1.5rem;
         }
+        .active-btn { 
+            background: #6366f1 !important; 
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            border-color: rgba(255,255,255,0.3) !important;
+        }
     </style>
 </head>
 <body>
@@ -50,18 +55,14 @@
         const { useState, useEffect, useCallback } = React;
 
         const App = () => {
-            const [view, setView] = useState('menu'); // menu, math-select, math-game, flags
+            const [view, setView] = useState('menu');
             const [score, setScore] = useState(() => Number(localStorage.getItem('total_score')) || 0);
             const [feedback, setFeedback] = useState(null);
             
             // Rekenspel State
             const [selectedTypes, setSelectedTypes] = useState(['plus']); 
+            const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('math_level')) || 1);
             const [currentMathType, setCurrentMathType] = useState('plus');
-            const [levels, setLevels] = useState(() => {
-                const saved = localStorage.getItem('math_levels');
-                return saved ? JSON.parse(saved) : { plus: 1, min: 1, keer: 1, gedeeld: 1 };
-            });
-            const [correctStreak, setCorrectStreak] = useState(0);
             const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
             const [userAnswer, setUserAnswer] = useState('');
 
@@ -72,8 +73,8 @@
             // Opslaan van data
             useEffect(() => {
                 localStorage.setItem('total_score', score);
-                localStorage.setItem('math_levels', JSON.stringify(levels));
-            }, [score, levels]);
+                localStorage.setItem('math_level', mathLevel);
+            }, [score, mathLevel]);
 
             // Laad vlaggen
             useEffect(() => {
@@ -89,14 +90,12 @@
             }, []);
 
             const generateMath = useCallback((typeOverride) => {
-                // Kies een willekeurig type uit de geselecteerde types
                 const availableTypes = typeOverride || selectedTypes;
                 const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
                 setCurrentMathType(type);
                 
-                const level = levels[type];
                 let n1, n2, q, a;
-                const range = level * 5;
+                const range = mathLevel * 5;
 
                 if (type === 'plus') {
                     n1 = Math.floor(Math.random() * range) + 1;
@@ -104,17 +103,17 @@
                     q = `${n1} + ${n2}`;
                     a = n1 + n2;
                 } else if (type === 'min') {
-                    n1 = Math.floor(Math.random() * range) + (level * 2);
+                    n1 = Math.floor(Math.random() * range) + (mathLevel * 2);
                     n2 = Math.floor(Math.random() * n1);
                     q = `${n1} - ${n2}`;
                     a = n1 - n2;
                 } else if (type === 'keer') {
-                    n1 = Math.floor(Math.random() * Math.min(level + 2, 12)) + 1;
+                    n1 = Math.floor(Math.random() * Math.min(mathLevel + 2, 12)) + 1;
                     n2 = Math.floor(Math.random() * 10) + 1;
                     q = `${n1} × ${n2}`;
                     a = n1 * n2;
                 } else if (type === 'gedeeld') {
-                    n2 = Math.floor(Math.random() * Math.min(level + 2, 10)) + 1;
+                    n2 = Math.floor(Math.random() * Math.min(mathLevel + 2, 10)) + 1;
                     a = Math.floor(Math.random() * 10) + 1;
                     n1 = n2 * a;
                     q = `${n1} : ${n2}`;
@@ -123,25 +122,15 @@
                 setMathProblem({ q, a });
                 setUserAnswer('');
                 setFeedback(null);
-            }, [selectedTypes, levels]);
+            }, [selectedTypes, mathLevel]);
 
             const checkMath = () => {
                 if (parseInt(userAnswer) === mathProblem.a) {
                     setFeedback("Goed zo! ✨");
                     setScore(s => s + 1);
-                    const newStreak = correctStreak + 1;
-                    
-                    if (newStreak >= 5) {
-                        setLevels(prev => ({ ...prev, [currentMathType]: prev[currentMathType] + 1 }));
-                        setCorrectStreak(0);
-                        setFeedback("LEVEL UP! 🚀");
-                    } else {
-                        setCorrectStreak(newStreak);
-                    }
                     setTimeout(() => generateMath(), 800);
                 } else {
                     setFeedback("Helaas! ❌");
-                    setCorrectStreak(0);
                     setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 800);
                 }
             };
@@ -149,16 +138,12 @@
             const toggleMathType = (id) => {
                 setSelectedTypes(prev => {
                     if (prev.includes(id)) {
-                        if (prev.length === 1) return prev; // Minimaal 1 geselecteerd houden
+                        if (prev.length === 1) return prev;
                         return prev.filter(t => t !== id);
                     } else {
                         return [...prev, id];
                     }
                 });
-            };
-
-            const changeLevel = (type, delta) => {
-                setLevels(prev => ({ ...prev, [type]: Math.max(1, prev[type] + delta) }));
             };
 
             // VIEWS
@@ -172,20 +157,18 @@
                                 <span className="text-5xl">🔢</span>
                                 <div className="text-left">
                                     <b className="block text-2xl font-bold">Rekenen</b>
-                                    <span className="opacity-50 text-sm italic uppercase font-semibold">Selecteer sommen</span>
+                                    <span className="opacity-50 text-sm italic uppercase font-semibold">Kies je sommen</span>
                                 </div>
                             </button>
                             <button onClick={() => { 
                                 setView('flags'); 
-                                if (!flagProblem) {
-                                    const correct = countries[Math.floor(Math.random() * countries.length)];
-                                    let opts = [correct];
-                                    while(opts.length < 4) {
-                                        const r = countries[Math.floor(Math.random() * countries.length)];
-                                        if(!opts.find(o => o.name === r.name)) opts.push(r);
-                                    }
-                                    setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
+                                const correct = countries[Math.floor(Math.random() * countries.length)];
+                                let opts = [correct];
+                                while(opts.length < 4) {
+                                    const r = countries[Math.floor(Math.random() * countries.length)];
+                                    if(!opts.find(o => o.name === r.name)) opts.push(r);
                                 }
+                                setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
                             }} className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10">
                                 <span className="text-5xl">🚩</span>
                                 <div className="text-left">
@@ -200,51 +183,52 @@
 
             if (view === 'math-select') {
                 const types = [
-                    { id: 'plus', label: 'Plus (+)', icon: '➕', color: 'indigo' },
-                    { id: 'min', label: 'Min (-)', icon: '➖', color: 'rose' },
-                    { id: 'keer', label: 'Keer (×)', icon: 'amber' },
-                    { id: 'gedeeld', label: 'Gedeeld (:)', icon: 'sky' }
+                    { id: 'plus', label: 'Plus', icon: '➕' },
+                    { id: 'min', label: 'Min', icon: '➖' },
+                    { id: 'keer', label: 'Keer', icon: '✖️' },
+                    { id: 'gedeeld', label: 'Gedeeld', icon: '➗' }
                 ];
+                const levelsList = [1, 5, 10, 15, 20, 25];
+
                 return (
                     <div className="full-h flex flex-col p-8 bg-slate-950 text-white overflow-y-auto">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-center mb-8">
                             <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">← Menu</button>
                             <button 
-                                onClick={() => { setCorrectStreak(0); setView('math-game'); generateMath(); }}
+                                onClick={() => { setView('math-game'); generateMath(); }}
                                 className="bg-indigo-600 px-8 py-3 rounded-full font-black uppercase text-sm shadow-lg shadow-indigo-500/40 active:scale-95 transition-all"
                             >Starten 🚀</button>
                         </div>
-                        <h2 className="text-3xl font-black mb-8 italic uppercase leading-tight">Welke sommen<br/><span className="text-indigo-500">wil je oefenen?</span></h2>
-                        <div className="space-y-4 pb-12">
-                            {types.map(t => {
-                                const isSelected = selectedTypes.includes(t.id);
-                                return (
-                                    <div key={t.id} className={`rounded-[2rem] p-5 transition-all border-2 ${isSelected ? 'bg-slate-800/80 border-indigo-500/50 shadow-lg shadow-indigo-500/5' : 'bg-slate-900/40 border-white/5 opacity-60'}`}>
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div className="flex items-center gap-4">
-                                                <span className="text-3xl">{t.icon}</span>
-                                                <b className="text-xl">{t.label}</b>
-                                            </div>
-                                            <button 
-                                                onClick={() => toggleMathType(t.id)}
-                                                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}
-                                            >
-                                                {isSelected ? '✓' : '+'}
-                                            </button>
-                                        </div>
-                                        <div className="flex items-center justify-between bg-black/20 p-3 rounded-2xl">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] uppercase font-bold opacity-50 tracking-widest mb-1">Huidig Level</span>
-                                                <b className="text-indigo-400">Level {levels[t.id]}</b>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <button onClick={() => changeLevel(t.id, -5)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold active:bg-white/10">-5</button>
-                                                <button onClick={() => changeLevel(t.id, 5)} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center font-bold active:bg-white/10">+5</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+
+                        <h2 className="text-2xl font-black mb-6 italic uppercase">1. Kies de sommen</h2>
+                        <div className="grid grid-cols-2 gap-4 mb-12">
+                            {types.map(t => (
+                                <button 
+                                    key={t.id}
+                                    onClick={() => toggleMathType(t.id)}
+                                    className={`glass p-6 rounded-[2rem] flex flex-col items-center gap-2 border-2 transition-all ${selectedTypes.includes(t.id) ? 'active-btn' : 'border-white/5 opacity-40'}`}
+                                >
+                                    <span className="text-3xl">{t.icon}</span>
+                                    <b className="uppercase text-xs tracking-widest">{t.label}</b>
+                                </button>
+                            ))}
+                        </div>
+
+                        <h2 className="text-2xl font-black mb-6 italic uppercase">2. Kies het Level</h2>
+                        <div className="grid grid-cols-3 gap-3">
+                            {levelsList.map(lvl => (
+                                <button 
+                                    key={lvl}
+                                    onClick={() => setMathLevel(lvl)}
+                                    className={`p-4 rounded-2xl font-bold text-xl transition-all ${mathLevel === lvl ? 'bg-indigo-500 text-white shadow-lg' : 'bg-slate-900 text-slate-500 border border-white/5'}`}
+                                >
+                                    {lvl}
+                                </button>
+                            ))}
+                        </div>
+                        
+                        <div className="mt-12 text-center opacity-30 text-[10px] uppercase font-bold tracking-[0.3em]">
+                            Alle types gebruiken level {mathLevel}
                         </div>
                     </div>
                 );
@@ -254,10 +238,10 @@
                 return (
                     <div className="full-h flex flex-col bg-slate-950 text-white">
                         <div className="p-8 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-10">
-                            <button onClick={() => setView('math-select')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">Stoppen</button>
-                            <div className="flex flex-col items-end">
-                                <div className="font-bold text-indigo-500 text-sm uppercase">{currentMathType} Level {levels[currentMathType]}</div>
-                                <div className="text-[10px] opacity-50 font-bold uppercase tracking-widest">Streak: {correctStreak}/5</div>
+                            <button onClick={() => setView('math-select')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">Aanpassen</button>
+                            <div className="text-right">
+                                <div className="font-bold text-indigo-500 text-sm uppercase">Level {mathLevel}</div>
+                                <div className="text-[10px] opacity-50 font-bold uppercase">{currentMathType}</div>
                             </div>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
