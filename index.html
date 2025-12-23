@@ -11,7 +11,6 @@
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5353/5353363.png">
     
-    <!-- Koppeling naar het manifest bestand -->
     <link rel="manifest" href="manifest.json">
 
     <!-- start webpushr code -->
@@ -19,9 +18,7 @@
         (function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
         webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });
     </script>
-    <!-- end webpushr code -->
 
-    <!-- UI Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -39,17 +36,10 @@
         .full-h { height: 100vh; height: -webkit-fill-available; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        
-        /* Loading state animation */
         #root:empty::before {
             content: 'Laden... ✨';
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            color: white;
-            font-weight: bold;
-            font-size: 1.5rem;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; color: white; font-weight: bold; font-size: 1.5rem;
         }
     </style>
 </head>
@@ -60,19 +50,31 @@
         const { useState, useEffect, useCallback } = React;
 
         const App = () => {
-            const [view, setView] = useState('menu');
-            const [score, setScore] = useState(0);
+            const [view, setView] = useState('menu'); // menu, math-select, math-game, flags
+            const [score, setScore] = useState(() => Number(localStorage.getItem('total_score')) || 0);
             const [feedback, setFeedback] = useState(null);
             
             // Rekenspel State
-            const [mathProblem, setMathProblem] = useState({ q: '8 + 4', a: 12 });
+            const [mathType, setMathType] = useState('plus'); // plus, min, keer, gedeeld
+            const [levels, setLevels] = useState(() => {
+                const saved = localStorage.getItem('math_levels');
+                return saved ? JSON.parse(saved) : { plus: 1, min: 1, keer: 1, gedeeld: 1 };
+            });
+            const [correctStreak, setCorrectStreak] = useState(0);
+            const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
             const [userAnswer, setUserAnswer] = useState('');
 
             // Vlaggen State
             const [flagProblem, setFlagProblem] = useState(null);
             const [countries, setCountries] = useState([]);
 
-            // Laad vlaggen data van REST Countries API
+            // Opslaan van data
+            useEffect(() => {
+                localStorage.setItem('total_score', score);
+                localStorage.setItem('math_levels', JSON.stringify(levels));
+            }, [score, levels]);
+
+            // Laad vlaggen
             useEffect(() => {
                 fetch('https://restcountries.com/v3.1/all?fields=name,flags')
                     .then(res => res.json())
@@ -82,17 +84,42 @@
                             flag: c.flags.svg || c.flags.png 
                         })).filter(c => c.name && c.flag);
                         setCountries(list);
-                    })
-                    .catch(err => console.error("Fout bij laden vlaggen:", err));
+                    });
             }, []);
 
-            const generateMath = useCallback(() => {
-                const n1 = Math.floor(Math.random() * 12) + 1;
-                const n2 = Math.floor(Math.random() * 12) + 1;
-                setMathProblem({ q: `${n1} + ${n2}`, a: n1 + n2 });
+            const generateMath = useCallback((overrideType, overrideLevel) => {
+                const type = overrideType || mathType;
+                const level = overrideLevel || levels[type];
+                
+                let n1, n2, q, a;
+                const range = level * 5; // Level bepaalt de moeilijkheid
+
+                if (type === 'plus') {
+                    n1 = Math.floor(Math.random() * range) + 1;
+                    n2 = Math.floor(Math.random() * range) + 1;
+                    q = `${n1} + ${n2}`;
+                    a = n1 + n2;
+                } else if (type === 'min') {
+                    n1 = Math.floor(Math.random() * range) + (level * 2);
+                    n2 = Math.floor(Math.random() * n1);
+                    q = `${n1} - ${n2}`;
+                    a = n1 - n2;
+                } else if (type === 'keer') {
+                    n1 = Math.floor(Math.random() * Math.min(level + 2, 12)) + 1;
+                    n2 = Math.floor(Math.random() * 10) + 1;
+                    q = `${n1} × ${n2}`;
+                    a = n1 * n2;
+                } else if (type === 'gedeeld') {
+                    n2 = Math.floor(Math.random() * Math.min(level + 2, 10)) + 1;
+                    a = Math.floor(Math.random() * 10) + 1;
+                    n1 = n2 * a;
+                    q = `${n1} : ${n2}`;
+                }
+
+                setMathProblem({ q, a });
                 setUserAnswer('');
                 setFeedback(null);
-            }, []);
+            }, [mathType, levels]);
 
             const generateFlag = useCallback(() => {
                 if (countries.length === 0) return;
@@ -102,11 +129,7 @@
                     const r = countries[Math.floor(Math.random() * countries.length)];
                     if(!opts.find(o => o.name === r.name)) opts.push(r);
                 }
-                setFlagProblem({ 
-                    q: correct.name, 
-                    a: correct.name, 
-                    opts: opts.sort(() => Math.random() - 0.5) 
-                });
+                setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
                 setFeedback(null);
             }, [countries]);
 
@@ -114,78 +137,105 @@
                 if (parseInt(userAnswer) === mathProblem.a) {
                     setFeedback("Goed zo! ✨");
                     setScore(s => s + 1);
-                    setTimeout(generateMath, 800);
+                    const newStreak = correctStreak + 1;
+                    
+                    if (newStreak >= 5) {
+                        setLevels(prev => ({ ...prev, [mathType]: prev[mathType] + 1 }));
+                        setCorrectStreak(0);
+                        setFeedback("LEVEL UP! 🚀");
+                    } else {
+                        setCorrectStreak(newStreak);
+                    }
+                    setTimeout(() => generateMath(), 800);
                 } else {
-                    setFeedback("Probeer het nog eens! ❌");
+                    setFeedback("Helaas! ❌");
+                    setCorrectStreak(0);
                     setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 800);
                 }
             };
 
-            const handleFlagChoice = (chosenName) => {
-                if (chosenName === flagProblem.a) {
-                    setFeedback("Helemaal goed! 🌍");
-                    setScore(s => s + 1);
-                    setTimeout(generateFlag, 800);
-                } else {
-                    setFeedback("Helaas, dat is 'm niet! ❌");
-                    setTimeout(() => setFeedback(null), 800);
-                }
+            const changeLevel = (type, delta) => {
+                const current = levels[type];
+                const next = Math.max(1, current + delta);
+                setLevels(prev => ({ ...prev, [type]: next }));
             };
 
+            // VIEWS
             if (view === 'menu') {
                 return (
-                    <div className="full-h flex flex-col items-center justify-center p-8 bg-slate-900 text-white gap-6">
+                    <div className="full-h flex flex-col items-center justify-center p-8 bg-slate-900 text-white gap-6 text-center">
                         <div className="text-7xl mb-2 animate-bounce">✨</div>
-                        <h1 className="text-4xl font-black italic tracking-tighter uppercase text-center drop-shadow-lg">
-                            Myrthe's Oefenmeester
-                        </h1>
-                        
+                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Myrthe's Oefenmeester</h1>
                         <div className="w-full max-w-sm space-y-4">
-                            <button 
-                                onClick={() => { setView('math'); generateMath(); }} 
-                                className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10"
-                            >
+                            <button onClick={() => setView('math-select')} className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10">
                                 <span className="text-5xl">🔢</span>
                                 <div className="text-left">
                                     <b className="block text-2xl font-bold">Rekenen</b>
-                                    <span className="opacity-50 text-sm italic uppercase tracking-wider font-semibold">Plus-sommen</span>
+                                    <span className="opacity-50 text-sm italic uppercase font-semibold">Plus, min & meer</span>
                                 </div>
                             </button>
-                            
-                            <button 
-                                onClick={() => { setView('flags'); generateFlag(); }} 
-                                className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10"
-                            >
+                            <button onClick={() => { setView('flags'); generateFlag(); }} className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10">
                                 <span className="text-5xl">🚩</span>
                                 <div className="text-left">
                                     <b className="block text-2xl font-bold">Vlaggen</b>
-                                    <span className="opacity-50 text-sm italic uppercase tracking-wider font-semibold">Landen raden</span>
+                                    <span className="opacity-50 text-sm italic uppercase font-semibold">Landen raden</span>
                                 </div>
                             </button>
                         </div>
-
-                        <button 
-                            onClick={() => { if(window.webpushr) webpushr('show_prompt'); }}
-                            className="mt-8 text-[10px] text-slate-500 underline uppercase tracking-[0.2em] font-bold"
-                        >
-                            Meldingen aan zetten 🔔
-                        </button>
                     </div>
                 );
             }
 
-            if (view === 'math') {
+            if (view === 'math-select') {
+                return (
+                    <div className="full-h flex flex-col p-8 bg-slate-950 text-white overflow-y-auto">
+                        <button onClick={() => setView('menu')} className="self-start text-slate-500 font-bold uppercase tracking-widest text-xs mb-8">← Terug</button>
+                        <h2 className="text-3xl font-black mb-8 italic uppercase">Wat wil je oefenen?</h2>
+                        <div className="space-y-4">
+                            {[
+                                { id: 'plus', label: 'Plus (+)', icon: '➕', color: 'indigo' },
+                                { id: 'min', label: 'Min (-)', icon: '➖', color: 'rose' },
+                                { id: 'keer', label: 'Keer (×)', icon: '✖️', color: 'amber' },
+                                { id: 'gedeeld', label: 'Gedeeld (:)', icon: '➗', color: 'sky' }
+                            ].map(t => (
+                                <div key={t.id} className="glass rounded-[2rem] p-4 flex flex-col gap-4 border border-white/5">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-3xl">{t.icon}</span>
+                                            <b className="text-xl">{t.label}</b>
+                                        </div>
+                                        <button 
+                                            onClick={() => { setMathType(t.id); setCorrectStreak(0); setView('math-game'); generateMath(t.id); }}
+                                            className={`bg-${t.color}-600 px-6 py-2 rounded-full font-bold uppercase text-sm active:scale-90 transition-all`}
+                                        >Start</button>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-black/20 p-3 rounded-2xl">
+                                        <span className="text-xs uppercase font-bold opacity-50 tracking-widest">Level {levels[t.id]}</span>
+                                        <div className="flex items-center gap-4">
+                                            <button onClick={() => changeLevel(t.id, -5)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold">-5</button>
+                                            <button onClick={() => changeLevel(t.id, 5)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold">+5</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'math-game') {
                 return (
                     <div className="full-h flex flex-col bg-slate-950 text-white">
-                        <div className="p-8 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-10 border-b border-white/5">
-                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">Menu</button>
-                            <div className="font-bold text-orange-500 flex items-center gap-2 bg-orange-500/10 px-4 py-1 rounded-full border border-orange-500/20">
-                                {score} <span className="text-lg">🔥</span>
+                        <div className="p-8 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-10">
+                            <button onClick={() => setView('math-select')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">Stoppen</button>
+                            <div className="flex flex-col items-end">
+                                <div className="font-bold text-orange-500 text-sm">LEVEL {levels[mathType]}</div>
+                                <div className="text-[10px] opacity-50 font-bold uppercase">Streak: {correctStreak}/5</div>
                             </div>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <div className="text-8xl font-black mb-8 tabular-nums tracking-tighter">{mathProblem.q}</div>
-                            <div className="text-6xl font-mono bg-slate-900 px-12 py-6 rounded-[2rem] min-w-[200px] border-2 border-slate-800 shadow-inner text-indigo-400">
+                            <div className="text-7xl font-black mb-8 tabular-nums tracking-tighter">{mathProblem.q}</div>
+                            <div className="text-6xl font-mono bg-slate-900 px-12 py-6 rounded-[2rem] min-w-[200px] border-2 border-slate-800 text-indigo-400">
                                 {userAnswer || <span className="opacity-10">?</span>}
                             </div>
                             <div className="h-12 mt-6 text-2xl font-bold text-emerald-400">{feedback}</div>
@@ -196,7 +246,7 @@
                                     if(b === 'OK') { if(userAnswer) checkMath(); }
                                     else if(b === 'C') setUserAnswer('');
                                     else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600 text-white' : b === 'C' ? 'bg-slate-800 text-rose-500' : 'bg-slate-800 text-white'}`}>{b}</button>
+                                }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800'}`}>{b}</button>
                             ))}
                         </div>
                     </div>
@@ -208,27 +258,28 @@
                     <div className="full-h flex flex-col bg-slate-950 text-white p-6">
                         <div className="flex justify-between items-center mb-8 mt-4">
                             <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Terug</button>
-                            <div className="font-bold text-orange-500 bg-orange-500/10 px-4 py-1 rounded-full border border-orange-500/20">{score} 🔥</div>
+                            <div className="font-bold text-orange-500 bg-orange-500/10 px-4 py-1 rounded-full">{score} 🔥</div>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center gap-8">
                             <div className="text-center">
-                                <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] mb-2 uppercase opacity-60">Welk land is dit?</p>
-                                <h2 className="text-4xl font-black tracking-tighter uppercase leading-tight">{flagProblem?.q}</h2>
+                                <p className="text-slate-500 font-bold text-[10px] tracking-widest mb-2 uppercase">Welk land is dit?</p>
+                                <h2 className="text-4xl font-black tracking-tighter uppercase">{flagProblem?.q}</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full max-w-md">
                                 {flagProblem?.opts.map((o, i) => (
-                                    <button 
-                                        key={i} 
-                                        onClick={() => handleFlagChoice(o.name)} 
-                                        className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 transition-all shadow-xl overflow-hidden border border-white/10"
-                                    >
+                                    <button key={i} onClick={() => {
+                                        if (o.name === flagProblem.a) {
+                                            setFeedback("Helemaal goed! 🌍"); setScore(s => s + 1); setTimeout(generateFlag, 800);
+                                        } else {
+                                            setFeedback("Helaas! ❌"); setTimeout(() => setFeedback(null), 800);
+                                        }
+                                    }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 transition-all border border-white/10 overflow-hidden">
                                         <img src={o.flag} className="w-full h-full object-cover rounded-2xl" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-xl font-bold text-emerald-400 italic text-center">{feedback}</div>
+                            <div className="h-10 text-xl font-bold text-emerald-400 italic">{feedback}</div>
                         </div>
-                        <div className="h-12"></div>
                     </div>
                 );
             }
