@@ -10,10 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     
-    <!-- Icoon voor op het beginscherm -->
+    <!-- Icoon Koppeling (Verwijst naar icon.png in je GitHub map) -->
     <link rel="apple-touch-icon" href="icon.png">
-    
-    <!-- Manifest koppeling -->
     <link rel="manifest" href="manifest.json">
 
     <!-- Webpushr Tracking Code -->
@@ -22,10 +20,12 @@
         webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });
     </script>
 
+    <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
         body { 
@@ -45,11 +45,6 @@
             display: flex; align-items: center; justify-content: center;
             height: 100vh; color: white; font-weight: bold; font-size: 1.5rem;
         }
-        .active-btn { 
-            background: #6366f1 !important; 
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
-            border-color: rgba(255,255,255,0.3) !important;
-        }
     </style>
 </head>
 <body>
@@ -58,18 +53,24 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
+        const Icon = ({ name, size = 24, className = "" }) => {
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
         const App = () => {
             const [view, setView] = useState('menu');
             const [score, setScore] = useState(() => Number(localStorage.getItem('total_score')) || 0);
             const [feedback, setFeedback] = useState(null);
-            
-            const [selectedTypes, setSelectedTypes] = useState(['plus']); 
+            const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false }); 
             const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('math_level')) || 1);
-            const [currentMathType, setCurrentMathType] = useState('plus');
-            const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
+            const [mathProblem, setMathProblem] = useState({ q: '8 + 4', a: 12 });
             const [userAnswer, setUserAnswer] = useState('');
             const [countries, setCountries] = useState([]);
             const [flagProblem, setFlagProblem] = useState(null);
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            });
 
             useEffect(() => {
                 localStorage.setItem('total_score', score);
@@ -88,10 +89,15 @@
                     });
             }, []);
 
-            const generateMath = useCallback((typeOverride) => {
-                const availableTypes = typeOverride || selectedTypes;
-                const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-                setCurrentMathType(type);
+            const enableNotifications = () => {
+                if (typeof window.webpushr !== 'undefined') {
+                    window.webpushr('prompt');
+                }
+            };
+
+            const generateMath = useCallback(() => {
+                const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
+                const type = ops[Math.floor(Math.random() * ops.length)] || 'plus';
                 let n1, n2, q, a;
                 const range = mathLevel * 5;
 
@@ -107,7 +113,7 @@
                     n1 = Math.floor(Math.random() * Math.min(mathLevel + 2, 12)) + 1;
                     n2 = Math.floor(Math.random() * 10) + 1;
                     q = `${n1} × ${n2}`; a = n1 * n2;
-                } else if (type === 'gedeeld') {
+                } else {
                     n2 = Math.floor(Math.random() * Math.min(mathLevel + 2, 10)) + 1;
                     a = Math.floor(Math.random() * 10) + 1;
                     n1 = n2 * a;
@@ -133,13 +139,14 @@
                 return (
                     <div className="full-h flex flex-col items-center justify-center p-8 bg-slate-900 text-white gap-6 text-center">
                         <div className="text-7xl mb-2 animate-bounce">✨</div>
-                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Myrthe's Oefenmeester</h1>
+                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Myrthe's App</h1>
+                        
                         <div className="w-full max-w-sm space-y-4">
-                            <button onClick={() => setView('math-select')} className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10">
-                                <span className="text-5xl">🔢</span>
+                            <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10">
+                                <div className="bg-indigo-600 p-4 rounded-2xl"><Icon name="calculator" /></div>
                                 <div className="text-left">
-                                    <b className="block text-2xl font-bold">Rekenen</b>
-                                    <span className="opacity-50 text-sm italic uppercase font-semibold">Kies je sommen</span>
+                                    <b className="block text-xl font-bold">Rekenen</b>
+                                    <span className="opacity-50 text-xs uppercase font-semibold">Plus en min</span>
                                 </div>
                             </button>
                             <button onClick={() => { 
@@ -151,46 +158,40 @@
                                     if(!opts.find(o => o.name === r.name)) opts.push(r);
                                 }
                                 setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
-                            }} className="w-full glass p-8 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10">
-                                <span className="text-5xl">🚩</span>
+                            }} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10">
+                                <div className="bg-emerald-600 p-4 rounded-2xl"><Icon name="flag" /></div>
                                 <div className="text-left">
-                                    <b className="block text-2xl font-bold">Vlaggen</b>
-                                    <span className="opacity-50 text-sm italic uppercase font-semibold">Landen raden</span>
+                                    <b className="block text-xl font-bold">Vlaggen</b>
+                                    <span className="opacity-50 text-xs uppercase font-semibold">Landen raden</span>
                                 </div>
                             </button>
                         </div>
+
+                        <button onClick={enableNotifications} className="mt-4 flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest active:scale-90 transition-all border border-indigo-500/20">
+                            <Icon name="bell" size={16} /> Meldingen aanzetten
+                        </button>
                     </div>
                 );
             }
 
-            if (view === 'math-select') {
-                const types = [
-                    { id: 'plus', label: 'Plus', icon: '➕' }, { id: 'min', label: 'Min', icon: '➖' },
-                    { id: 'keer', label: 'Keer', icon: '✖️' }, { id: 'gedeeld', label: 'Gedeeld', icon: '➗' }
-                ];
-                const levelsList = [1, 5, 10, 15, 20, 25];
+            if (view === 'math-setup') {
                 return (
-                    <div className="full-h flex flex-col p-8 bg-slate-950 text-white overflow-y-auto">
-                        <div className="flex justify-between items-center mb-8">
-                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">← Menu</button>
-                            <button onClick={() => { setView('math-game'); generateMath(); }} className="bg-indigo-600 px-8 py-3 rounded-full font-black uppercase text-sm active:scale-95 transition-all">Starten 🚀</button>
-                        </div>
-                        <h2 className="text-2xl font-black mb-6 italic uppercase">1. Kies de sommen</h2>
-                        <div className="grid grid-cols-2 gap-4 mb-12">
-                            {types.map(t => (
-                                <button key={t.id} onClick={() => setSelectedTypes(prev => prev.includes(t.id) ? (prev.length > 1 ? prev.filter(x => x !== t.id) : prev) : [...prev, t.id])}
-                                    className={`glass p-6 rounded-[2rem] flex flex-col items-center gap-2 border-2 transition-all ${selectedTypes.includes(t.id) ? 'active-btn' : 'border-white/5 opacity-40'}`}>
-                                    <span className="text-3xl">{t.icon}</span>
-                                    <b className="uppercase text-xs tracking-widest">{t.label}</b>
+                    <div className="full-h flex flex-col p-8 bg-slate-950 text-white">
+                        <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs mb-8 flex items-center gap-2">
+                             <Icon name="chevron-left" size={16} /> TERUG
+                        </button>
+                        <h2 className="text-2xl font-black mb-6 uppercase italic">Instellingen</h2>
+                        <div className="grid grid-cols-2 gap-4 mb-8">
+                            {['plus', 'min', 'keer', 'gedeeld'].map(t => (
+                                <button key={t} onClick={() => setSelectedTypes({...selectedTypes, [t]: !selectedTypes[t]})}
+                                    className={`p-6 rounded-[2rem] border-2 transition-all font-bold uppercase text-sm ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400 shadow-lg' : 'bg-slate-900 border-white/5 opacity-40'}`}>
+                                    {t}
                                 </button>
                             ))}
                         </div>
-                        <h2 className="text-2xl font-black mb-6 italic uppercase">2. Kies het Level</h2>
-                        <div className="grid grid-cols-3 gap-3 mb-8">
-                            {levelsList.map(lvl => (
-                                <button key={lvl} onClick={() => setMathLevel(lvl)} className={`p-4 rounded-2xl font-bold text-xl transition-all ${mathLevel === lvl ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500 border border-white/5'}`}>{lvl}</button>
-                            ))}
-                        </div>
+                        <button onClick={() => { setView('math-game'); generateMath(); }} className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black text-xl active:scale-95 transition-all shadow-2xl shadow-indigo-500/30">
+                            STARTEN
+                        </button>
                     </div>
                 );
             }
@@ -198,27 +199,24 @@
             if (view === 'math-game') {
                 return (
                     <div className="full-h flex flex-col bg-slate-950 text-white">
-                        <div className="p-8 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-10">
-                            <button onClick={() => setView('math-select')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">Aanpassen</button>
-                            <div className="text-right">
-                                <div className="font-bold text-indigo-500 text-sm uppercase">Level {mathLevel}</div>
-                                <div className="text-[10px] opacity-50 font-bold uppercase">{currentMathType}</div>
-                            </div>
+                        <div className="p-6 flex justify-between items-center bg-slate-900/40 backdrop-blur-md">
+                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs">STOP</button>
+                            <div className="font-bold text-orange-500">{score} 🔥</div>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <div className="text-7xl sm:text-8xl font-black mb-6 tabular-nums">{mathProblem.q}</div>
-                            <div className="text-5xl sm:text-6xl font-mono bg-slate-900 px-10 py-5 rounded-[2rem] min-w-[180px] border-2 border-slate-800 text-indigo-400">
+                            <div className="text-8xl font-black mb-8">{mathProblem.q}</div>
+                            <div className="text-6xl font-mono bg-slate-900 px-10 py-6 rounded-[2.5rem] min-w-[200px] border-2 border-slate-800 text-indigo-400 shadow-inner">
                                 {userAnswer || <span className="opacity-10">?</span>}
                             </div>
-                            <div className="h-12 mt-4 text-xl font-bold text-emerald-400">{feedback}</div>
+                            <div className="h-12 mt-6 text-2xl font-bold text-emerald-400">{feedback}</div>
                         </div>
-                        <div className="bg-slate-900 p-6 rounded-t-[3rem] keyboard-footer grid grid-cols-3 gap-3 shadow-2xl border-t border-white/10">
+                        <div className="bg-slate-900 p-6 rounded-t-[3rem] keyboard-footer grid grid-cols-3 gap-3 shadow-2xl">
                             {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                 <button key={b} onClick={() => {
                                     if(b === 'OK') { if(userAnswer) checkMath(); }
                                     else if(b === 'C') setUserAnswer('');
                                     else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                }} className={`h-14 sm:h-16 rounded-2xl text-2xl sm:text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800'}`}>{b}</button>
+                                }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800'}`}>{b}</button>
                             ))}
                         </div>
                     </div>
@@ -237,32 +235,31 @@
                     setFeedback(null);
                 };
                 return (
-                    <div className="full-h flex flex-col bg-slate-950 text-white p-6">
-                        <div className="flex justify-between items-center mb-8 mt-4">
-                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Terug</button>
-                            <div className="font-bold text-orange-500 bg-orange-500/10 px-4 py-1 rounded-full">{score} 🔥</div>
+                    <div className="full-h flex flex-col bg-slate-950 text-white p-8">
+                        <div className="flex justify-between items-center mb-10">
+                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs">STOP</button>
+                            <div className="font-bold text-orange-500">{score} 🔥</div>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center gap-8 text-center">
-                            <div>
-                                <p className="text-slate-500 font-bold text-[10px] tracking-widest mb-2 uppercase">Welk land is dit?</p>
-                                <h2 className="text-4xl font-black uppercase">{flagProblem?.q}</h2>
+                        <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center">
+                            <div className="space-y-2">
+                                <p className="text-slate-500 font-bold text-[10px] tracking-widest uppercase">Welk land is dit?</p>
+                                <h2 className="text-4xl font-black italic uppercase">{flagProblem?.q}</h2>
                             </div>
-                            <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                                 {flagProblem?.opts.map((o, i) => (
                                     <button key={i} onClick={() => {
                                         if (o.name === flagProblem.a) {
-                                            setFeedback("Helemaal goed! 🌍"); setScore(s => s + 1); setTimeout(generateNextFlag, 800);
+                                            setFeedback("Goed! 🌍"); setScore(s => s + 1); setTimeout(generateNextFlag, 800);
                                         } else {
-                                            setFeedback("Helaas! ❌"); setTimeout(() => setFeedback(null), 800);
+                                            setFeedback("Fout! ❌"); setTimeout(() => setFeedback(null), 800);
                                         }
-                                    }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 border border-white/10 overflow-hidden">
-                                        <img src={o.flag} className="w-full h-full object-cover rounded-2xl" alt="Vlag" />
+                                    }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 border border-white/10 overflow-hidden shadow-2xl">
+                                        <img src={o.flag} className="w-full h-full object-cover rounded-2xl shadow-sm" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
                             <div className="h-10 text-xl font-bold text-emerald-400 italic">{feedback}</div>
                         </div>
-                        <div className="keyboard-footer"></div>
                     </div>
                 );
             }
