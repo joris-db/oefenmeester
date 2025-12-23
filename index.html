@@ -10,12 +10,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     
-    <!-- Icoon voor op het beginscherm. VERVANG DE URL HIERONDER DOOR DE URL VAN JOUW GEÜPLOADE AFBEELDING -->
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png">
+    <!-- Icoon voor op het beginscherm -->
+    <link rel="apple-touch-icon" href="icon.png">
     
+    <!-- Manifest koppeling -->
     <link rel="manifest" href="manifest.json">
 
-    <!-- start webpushr code -->
+    <!-- Webpushr Tracking Code -->
     <script>
         (function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
         webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });
@@ -38,12 +39,7 @@
         }
         .full-h { height: 100vh; height: -webkit-fill-available; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        
-        /* Verbeterde footer/safe-area voor het toetsenbord */
-        .keyboard-footer { 
-            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); 
-        }
-
+        .keyboard-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
         #root:empty::before {
             content: 'Laden... ✨';
             display: flex; align-items: center; justify-content: center;
@@ -67,24 +63,19 @@
             const [score, setScore] = useState(() => Number(localStorage.getItem('total_score')) || 0);
             const [feedback, setFeedback] = useState(null);
             
-            // Rekenspel State
             const [selectedTypes, setSelectedTypes] = useState(['plus']); 
             const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('math_level')) || 1);
             const [currentMathType, setCurrentMathType] = useState('plus');
             const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
             const [userAnswer, setUserAnswer] = useState('');
-
-            // Vlaggen State
-            const [flagProblem, setFlagProblem] = useState(null);
             const [countries, setCountries] = useState([]);
+            const [flagProblem, setFlagProblem] = useState(null);
 
-            // Opslaan van data
             useEffect(() => {
                 localStorage.setItem('total_score', score);
                 localStorage.setItem('math_level', mathLevel);
             }, [score, mathLevel]);
 
-            // Laad vlaggen
             useEffect(() => {
                 fetch('https://restcountries.com/v3.1/all?fields=name,flags')
                     .then(res => res.json())
@@ -101,32 +92,27 @@
                 const availableTypes = typeOverride || selectedTypes;
                 const type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
                 setCurrentMathType(type);
-                
                 let n1, n2, q, a;
                 const range = mathLevel * 5;
 
                 if (type === 'plus') {
                     n1 = Math.floor(Math.random() * range) + 1;
                     n2 = Math.floor(Math.random() * range) + 1;
-                    q = `${n1} + ${n2}`;
-                    a = n1 + n2;
+                    q = `${n1} + ${n2}`; a = n1 + n2;
                 } else if (type === 'min') {
                     n1 = Math.floor(Math.random() * range) + (mathLevel * 2);
                     n2 = Math.floor(Math.random() * n1);
-                    q = `${n1} - ${n2}`;
-                    a = n1 - n2;
+                    q = `${n1} - ${n2}`; a = n1 - n2;
                 } else if (type === 'keer') {
                     n1 = Math.floor(Math.random() * Math.min(mathLevel + 2, 12)) + 1;
                     n2 = Math.floor(Math.random() * 10) + 1;
-                    q = `${n1} × ${n2}`;
-                    a = n1 * n2;
+                    q = `${n1} × ${n2}`; a = n1 * n2;
                 } else if (type === 'gedeeld') {
                     n2 = Math.floor(Math.random() * Math.min(mathLevel + 2, 10)) + 1;
                     a = Math.floor(Math.random() * 10) + 1;
                     n1 = n2 * a;
                     q = `${n1} : ${n2}`;
                 }
-
                 setMathProblem({ q, a });
                 setUserAnswer('');
                 setFeedback(null);
@@ -143,18 +129,6 @@
                 }
             };
 
-            const toggleMathType = (id) => {
-                setSelectedTypes(prev => {
-                    if (prev.includes(id)) {
-                        if (prev.length === 1) return prev;
-                        return prev.filter(t => t !== id);
-                    } else {
-                        return [...prev, id];
-                    }
-                });
-            };
-
-            // VIEWS
             if (view === 'menu') {
                 return (
                     <div className="full-h flex flex-col items-center justify-center p-8 bg-slate-900 text-white gap-6 text-center">
@@ -191,52 +165,31 @@
 
             if (view === 'math-select') {
                 const types = [
-                    { id: 'plus', label: 'Plus', icon: '➕' },
-                    { id: 'min', label: 'Min', icon: '➖' },
-                    { id: 'keer', label: 'Keer', icon: '✖️' },
-                    { id: 'gedeeld', label: 'Gedeeld', icon: '➗' }
+                    { id: 'plus', label: 'Plus', icon: '➕' }, { id: 'min', label: 'Min', icon: '➖' },
+                    { id: 'keer', label: 'Keer', icon: '✖️' }, { id: 'gedeeld', label: 'Gedeeld', icon: '➗' }
                 ];
                 const levelsList = [1, 5, 10, 15, 20, 25];
-
                 return (
                     <div className="full-h flex flex-col p-8 bg-slate-950 text-white overflow-y-auto">
                         <div className="flex justify-between items-center mb-8">
                             <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase tracking-widest text-xs">← Menu</button>
-                            <button 
-                                onClick={() => { setView('math-game'); generateMath(); }}
-                                className="bg-indigo-600 px-8 py-3 rounded-full font-black uppercase text-sm shadow-lg shadow-indigo-500/40 active:scale-95 transition-all"
-                            >Starten 🚀</button>
+                            <button onClick={() => { setView('math-game'); generateMath(); }} className="bg-indigo-600 px-8 py-3 rounded-full font-black uppercase text-sm active:scale-95 transition-all">Starten 🚀</button>
                         </div>
-
                         <h2 className="text-2xl font-black mb-6 italic uppercase">1. Kies de sommen</h2>
                         <div className="grid grid-cols-2 gap-4 mb-12">
                             {types.map(t => (
-                                <button 
-                                    key={t.id}
-                                    onClick={() => toggleMathType(t.id)}
-                                    className={`glass p-6 rounded-[2rem] flex flex-col items-center gap-2 border-2 transition-all ${selectedTypes.includes(t.id) ? 'active-btn' : 'border-white/5 opacity-40'}`}
-                                >
+                                <button key={t.id} onClick={() => setSelectedTypes(prev => prev.includes(t.id) ? (prev.length > 1 ? prev.filter(x => x !== t.id) : prev) : [...prev, t.id])}
+                                    className={`glass p-6 rounded-[2rem] flex flex-col items-center gap-2 border-2 transition-all ${selectedTypes.includes(t.id) ? 'active-btn' : 'border-white/5 opacity-40'}`}>
                                     <span className="text-3xl">{t.icon}</span>
                                     <b className="uppercase text-xs tracking-widest">{t.label}</b>
                                 </button>
                             ))}
                         </div>
-
                         <h2 className="text-2xl font-black mb-6 italic uppercase">2. Kies het Level</h2>
                         <div className="grid grid-cols-3 gap-3 mb-8">
                             {levelsList.map(lvl => (
-                                <button 
-                                    key={lvl}
-                                    onClick={() => setMathLevel(lvl)}
-                                    className={`p-4 rounded-2xl font-bold text-xl transition-all ${mathLevel === lvl ? 'bg-indigo-500 text-white shadow-lg' : 'bg-slate-900 text-slate-500 border border-white/5'}`}
-                                >
-                                    {lvl}
-                                </button>
+                                <button key={lvl} onClick={() => setMathLevel(lvl)} className={`p-4 rounded-2xl font-bold text-xl transition-all ${mathLevel === lvl ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-slate-500 border border-white/5'}`}>{lvl}</button>
                             ))}
-                        </div>
-                        
-                        <div className="text-center opacity-30 text-[10px] uppercase font-bold tracking-[0.3em] pb-10">
-                            Alle types gebruiken level {mathLevel}
                         </div>
                     </div>
                 );
@@ -252,9 +205,9 @@
                                 <div className="text-[10px] opacity-50 font-bold uppercase">{currentMathType}</div>
                             </div>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-hidden">
-                            <div className="text-7xl sm:text-8xl font-black mb-6 tabular-nums tracking-tighter">{mathProblem.q}</div>
-                            <div className="text-5xl sm:text-6xl font-mono bg-slate-900 px-10 py-5 rounded-[2rem] min-w-[180px] border-2 border-slate-800 text-indigo-400 shadow-inner">
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                            <div className="text-7xl sm:text-8xl font-black mb-6 tabular-nums">{mathProblem.q}</div>
+                            <div className="text-5xl sm:text-6xl font-mono bg-slate-900 px-10 py-5 rounded-[2rem] min-w-[180px] border-2 border-slate-800 text-indigo-400">
                                 {userAnswer || <span className="opacity-10">?</span>}
                             </div>
                             <div className="h-12 mt-4 text-xl font-bold text-emerald-400">{feedback}</div>
@@ -283,17 +236,16 @@
                     setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
                     setFeedback(null);
                 };
-
                 return (
                     <div className="full-h flex flex-col bg-slate-950 text-white p-6">
                         <div className="flex justify-between items-center mb-8 mt-4">
                             <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Terug</button>
                             <div className="font-bold text-orange-500 bg-orange-500/10 px-4 py-1 rounded-full">{score} 🔥</div>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center gap-8">
-                            <div className="text-center">
+                        <div className="flex-1 flex flex-col items-center justify-center gap-8 text-center">
+                            <div>
                                 <p className="text-slate-500 font-bold text-[10px] tracking-widest mb-2 uppercase">Welk land is dit?</p>
-                                <h2 className="text-4xl font-black tracking-tighter uppercase leading-tight">{flagProblem?.q}</h2>
+                                <h2 className="text-4xl font-black uppercase">{flagProblem?.q}</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full max-w-md">
                                 {flagProblem?.opts.map((o, i) => (
@@ -303,12 +255,12 @@
                                         } else {
                                             setFeedback("Helaas! ❌"); setTimeout(() => setFeedback(null), 800);
                                         }
-                                    }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 transition-all border border-white/10 overflow-hidden">
+                                    }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 border border-white/10 overflow-hidden">
                                         <img src={o.flag} className="w-full h-full object-cover rounded-2xl" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-xl font-bold text-emerald-400 italic text-center">{feedback}</div>
+                            <div className="h-10 text-xl font-bold text-emerald-400 italic">{feedback}</div>
                         </div>
                         <div className="keyboard-footer"></div>
                     </div>
