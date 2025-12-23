@@ -17,7 +17,15 @@
     <!-- Webpushr Tracking Code -->
     <script>
         (function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
-        webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });
+        
+        // Setup met expliciete weergave van de bel-widget
+        webpushr('setup', {
+            'key': 'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw',
+            'prompt': {
+                'active': true,
+                'type': 'bell'
+            }
+        });
     </script>
 
     <!-- Scripts -->
@@ -39,7 +47,13 @@
         }
         .full-h { height: 100vh; height: -webkit-fill-available; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-        .keyboard-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+        
+        /* Verbeterde keyboard footer voor iPhone swipe bar */
+        .keyboard-area {
+            padding-bottom: env(safe-area-inset-bottom, 20px);
+            margin-bottom: 10px;
+        }
+
         #root:empty::before {
             content: 'Laden... ✨';
             display: flex; align-items: center; justify-content: center;
@@ -90,21 +104,26 @@
             }, []);
 
             const enableNotifications = () => {
-                // iPhone fix: check of we in standalone mode zitten
                 const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
                 
                 if (!isStandalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                    // Laat een melding zien dat ze de app eerst moeten toevoegen
-                    setFeedback("Voeg eerst toe aan beginscherm! 📲");
+                    setFeedback("Zet eerst op beginscherm! 📲");
                     setTimeout(() => setFeedback(null), 3000);
                     return;
                 }
 
+                setFeedback("Vraag toestemming... 🔔");
+                
                 if (typeof window.webpushr !== 'undefined') {
-                    window.webpushr('prompt');
+                    window.webpushr('prompt', {
+                        'callback': function(result) {
+                            if(result === 'subscribed') setFeedback("Gelukt! ✅");
+                            else if(result === 'blocked') setFeedback("Geweigerd ❌");
+                            setTimeout(() => setFeedback(null), 2000);
+                        }
+                    });
                 } else {
-                    // Fallback als script nog laadt
-                    setFeedback("Momentje... ⏳");
+                    setFeedback("Laden... ⏳");
                     setTimeout(() => setFeedback(null), 2000);
                 }
             };
@@ -140,11 +159,11 @@
 
             const checkMath = () => {
                 if (parseInt(userAnswer) === mathProblem.a) {
-                    setFeedback("Goed zo! ✨");
+                    setFeedback("Helemaal goed! ✨");
                     setScore(s => s + 1);
                     setTimeout(() => generateMath(), 800);
                 } else {
-                    setFeedback("Helaas! ❌");
+                    setFeedback("Probeer opnieuw! ❌");
                     setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 800);
                 }
             };
@@ -222,20 +241,23 @@
                             <div className="font-bold text-orange-500">{score} 🔥</div>
                         </div>
                         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <div className="text-8xl font-black mb-8">{mathProblem.q}</div>
+                            <div className="text-8xl font-black mb-4">{mathProblem.q}</div>
                             <div className="text-6xl font-mono bg-slate-900 px-10 py-6 rounded-[2.5rem] min-w-[200px] border-2 border-slate-800 text-indigo-400 shadow-inner">
                                 {userAnswer || <span className="opacity-10">?</span>}
                             </div>
-                            <div className="h-12 mt-6 text-2xl font-bold text-emerald-400">{feedback}</div>
+                            <div className="h-12 mt-4 text-2xl font-bold text-emerald-400">{feedback}</div>
                         </div>
-                        <div className="bg-slate-900 p-6 rounded-t-[3rem] keyboard-footer grid grid-cols-3 gap-3 shadow-2xl">
-                            {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
-                                <button key={b} onClick={() => {
-                                    if(b === 'OK') { if(userAnswer) checkMath(); }
-                                    else if(b === 'C') setUserAnswer('');
-                                    else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
-                                }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800'}`}>{b}</button>
-                            ))}
+                        {/* Toetsenbord met extra veilige marge onderaan */}
+                        <div className="bg-slate-900 p-6 pt-8 rounded-t-[3rem] shadow-2xl border-t border-white/5 keyboard-area">
+                            <div className="grid grid-cols-3 gap-3">
+                                {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
+                                    <button key={b} onClick={() => {
+                                        if(b === 'OK') { if(userAnswer) checkMath(); }
+                                        else if(b === 'C') setUserAnswer('');
+                                        else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
+                                    }} className={`h-16 rounded-2xl text-3xl font-black active:scale-90 transition-all ${b === 'OK' ? 'bg-indigo-600' : 'bg-slate-800 border border-white/5'}`}>{b}</button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 );
@@ -267,9 +289,9 @@
                                 {flagProblem?.opts.map((o, i) => (
                                     <button key={i} onClick={() => {
                                         if (o.name === flagProblem.a) {
-                                            setFeedback("Goed! 🌍"); setScore(s => s + 1); setTimeout(generateNextFlag, 800);
+                                            setFeedback("Helemaal goed! 🌍"); setScore(s => s + 1); setTimeout(generateNextFlag, 800);
                                         } else {
-                                            setFeedback("Fout! ❌"); setTimeout(() => setFeedback(null), 800);
+                                            setFeedback("Helaas! ❌"); setTimeout(() => setFeedback(null), 800);
                                         }
                                     }} className="aspect-[3/2] glass rounded-[2rem] p-2 active:scale-95 border border-white/10 overflow-hidden shadow-2xl">
                                         <img src={o.flag} className="w-full h-full object-cover rounded-2xl shadow-sm" alt="Vlag" />
@@ -278,6 +300,7 @@
                             </div>
                             <div className="h-10 text-xl font-bold text-emerald-400 italic">{feedback}</div>
                         </div>
+                        <div className="h-[env(safe-area-inset-bottom)]"></div>
                     </div>
                 );
             }
