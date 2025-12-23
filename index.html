@@ -33,7 +33,6 @@
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .scroll-hide::-webkit-scrollbar { display: none; }
         
-        /* Zorg dat de vlaggen niet vervormen of afgesneden worden */
         .flag-contain {
             object-fit: contain;
             background-color: rgba(0,0,0,0.2);
@@ -103,7 +102,7 @@
             { nl: "Het netwerk", de: "Netzwerk" }, { nl: "De connectie", de: "Verbindung" }, { nl: "De dialoog", de: "Dialog" }, { nl: "Het overleg", de: "Beratung" },
             { nl: "De workshop", de: "Workshop" }, { nl: "De training", de: "Training" }, { nl: "De coaching", de: "Coaching" }, { nl: "De mentor", de: "Mentor" },
             { nl: "De opvolger", de: "Nachfolger" }, { nl: "De pensioenleeftijd", de: "Rentenalter" }, { nl: "De bonus", de: "Bonus" }, { nl: "De promotie", de: "Beförderung" },
-            { nl: "De carriere", de: "Karriere" }, { nl: "De werk-privé balans", de: "Work-Life-Balance" }, { nl: "Het thuiskantoor", de: "Homeoffice" }, { nl: "De werktijd", de: "Arbeitszeit" },
+            { nl: "De carriere", de: "Karriere" }, { nl: "De werk-privé balans", de: "Work-Life-Balance" }, { nl: "Het thuiskantoor", de: "Homeoffice" }, { nl: "De werktijd", de: "Arbeitzeit" },
             { nl: "De deeltijdbaan", de: "Teilzeitjob" }, { nl: "De voltijdbaan", de: "Vollzeitjob" }, { nl: "De flexibiliteit", de: "Flexibilität" }, { nl: "De betrouwbaarheid", de: "Zuverlässigkeit" },
             { nl: "De integriteit", de: "Integrität" }, { nl: "De loyaliteit", de: "Loyalität" }, { nl: "De ambitie", de: "Ehrgeiz" }, { nl: "De passie", de: "Leidenschaft" }
         ];
@@ -197,16 +196,18 @@
             };
 
             const handleAnswer = (ans) => {
+                if (feedback) return; // Voorkom dubbel klikken tijdens feedback
+
                 let isCorrect = false;
-                let clickedVal = "";
+                let clickedName = "";
                 
-                // ans is bij vlaggen het object {name, flag}, bij duits de string met de vertaling
                 if (currentProblem.category === 'german') {
                     isCorrect = currentProblem.de === ans;
-                    clickedVal = ans;
+                    clickedName = ans;
                 } else if (currentProblem.category === 'flags') {
+                    // ans is het object {name, flag}
                     isCorrect = currentProblem.a === ans.name;
-                    clickedVal = ans.name;
+                    clickedName = ans.name;
                 }
 
                 if (isCorrect) {
@@ -217,8 +218,8 @@
                         else if (currentProblem.category === 'flags') generateFlag();
                     }, 800);
                 } else {
-                    // Bij fout antwoord tonen we wat het aangeklikte antwoord was
-                    setFeedback({ type: 'error', text: `Helaas! Dit was: ${clickedVal}` });
+                    // Hier tonen we expliciet de naam van de vlag die gekozen is
+                    setFeedback({ type: 'error', text: `Helaas, dit was ${clickedName}` });
                     setTimeout(() => setFeedback(null), 2000);
                 }
             };
@@ -337,7 +338,7 @@
                     <div className="app-container">
                         <Header title="Vlaggen" onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 gap-4 sm:gap-6 text-center overflow-y-auto">
-                            <h2 className="text-2xl sm:text-3xl font-black italic uppercase text-emerald-400 leading-tight mb-2">{currentProblem.q}</h2>
+                            <h2 className="text-2xl sm:text-3xl font-black italic uppercase text-emerald-400 leading-tight mb-2">Waar is {currentProblem.q}?</h2>
                             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-md">
                                 {currentProblem.opts.map((o, i) => (
                                     <button 
