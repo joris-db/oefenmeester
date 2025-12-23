@@ -198,8 +198,16 @@
 
             const handleAnswer = (ans) => {
                 let isCorrect = false;
-                if (currentProblem.category === 'german') isCorrect = currentProblem.de === ans;
-                else if (currentProblem.category === 'flags') isCorrect = currentProblem.a === ans;
+                let clickedVal = "";
+                
+                // ans is bij vlaggen het object {name, flag}, bij duits de string met de vertaling
+                if (currentProblem.category === 'german') {
+                    isCorrect = currentProblem.de === ans;
+                    clickedVal = ans;
+                } else if (currentProblem.category === 'flags') {
+                    isCorrect = currentProblem.a === ans.name;
+                    clickedVal = ans.name;
+                }
 
                 if (isCorrect) {
                     setScore(s => s + 5);
@@ -209,8 +217,8 @@
                         else if (currentProblem.category === 'flags') generateFlag();
                     }, 800);
                 } else {
-                    const correctVal = currentProblem.de || currentProblem.a;
-                    setFeedback({ type: 'error', text: `Helaas! Het was: ${correctVal}` });
+                    // Bij fout antwoord tonen we wat het aangeklikte antwoord was
+                    setFeedback({ type: 'error', text: `Helaas! Dit was: ${clickedVal}` });
                     setTimeout(() => setFeedback(null), 2000);
                 }
             };
@@ -334,7 +342,7 @@
                                 {currentProblem.opts.map((o, i) => (
                                     <button 
                                         key={i} 
-                                        onClick={() => handleAnswer(o.name)} 
+                                        onClick={() => handleAnswer(o)} 
                                         className="glass p-2 sm:p-3 rounded-2xl flex items-center justify-center aspect-[4/3] active:scale-95 transition-all overflow-hidden"
                                     >
                                         <img 
