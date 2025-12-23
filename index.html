@@ -5,26 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Myrthe's Oefenmeester</title>
 
-    <!-- App Icons voor iOS & Android -->
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png">
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png">
-
-    <!-- PWA & Mobile Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Oefenmeester">
     <meta name="mobile-web-app-capable" content="yes">
 
-    <!-- Inline Web App Manifest (Nodig voor iOS Push) -->
     <link rel="manifest" href='data:application/manifest+json,{"name":"Myrthes Oefenmeester","short_name":"Oefenmeester","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#020617","icons":[{"src":"https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png","sizes":"512x512","type":"image/png"}]}'>
 
-    <!-- start webpushr tracking code --> 
     <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";
     fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
     webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });</script>
-    <!-- end webpushr tracking code -->
     
-    <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -32,52 +25,21 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
-        :root {
-            --slate-950: #020617;
-            --slate-900: #0f172a;
-        }
+        :root { --slate-950: #020617; --slate-900: #0f172a; }
         body { 
             background-color: var(--slate-950); 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            margin: 0;
-            height: 100vh;
-            height: -webkit-fill-available;
-            overflow: hidden;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            margin: 0; height: 100vh; height: -webkit-fill-available; overflow: hidden;
+            -webkit-tap-highlight-color: transparent; user-select: none; color: white;
         }
-        .app-container {
-            height: 100vh;
-            height: -webkit-fill-available;
-            display: flex;
-            flex-direction: column;
-        }
-        .glass { 
-            background: rgba(30, 41, 59, 0.7); 
-            backdrop-filter: blur(12px); 
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.1); 
-        }
-        .numpad-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
+        .app-container { height: 100vh; height: -webkit-fill-available; display: flex; flex-direction: column; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
         .pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .feedback-slide { animation: slideUp 0.4s ease-out; }
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        /* Custom scrollbar for small overflow areas */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .map-container svg { width: 100%; height: auto; max-height: 280px; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
+        .province-active { fill: #fbbf24 !important; stroke: #fff !important; stroke-width: 2px; }
+        .province-default { fill: #1e293b; stroke: #475569; stroke-width: 1px; transition: fill 0.3s; }
+        .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     </style>
 </head>
 <body>
@@ -86,75 +48,57 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        // Service Worker Registratie voor iOS Push
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('data:text/javascript;base64,c2VsZixhZGRFdmVudExpc3RlbmVyKCdwdXNoJyxmdW5jdGlvbihlKXtjb25zdCBkPWUuZGF0YS5qc29uKCk7ZS53YWl0VW50aWwoc2VsZi5yZWdpc3RyYXRpb24uc2hvd05vdGlmaWNhdGlvbihkLnRpdGxlLGQpKTt9KTs=')
-                .catch(err => console.log('SW registration failed:', err));
-            });
-        }
-
-        const topoData = {
+        const topoQuestions = {
             nederland: [
-                { q: "Wat is de hoofdstad van Friesland?", a: "Leeuwarden" },
-                { q: "In welke provincie ligt Eindhoven?", a: "Noord-Brabant" },
-                { q: "Wat is de hoofdstad van Overijssel?", a: "Zwolle" },
-                { q: "Welke rivier stroomt door Rotterdam?", a: "Maas" },
-                { q: "Wat is de hoofdstad van Zeeland?", a: "Middelburg" },
-                { q: "In welke provincie liggen de hunebedden?", a: "Drenthe" },
-                { q: "Wat is de hoofdstad van Gelderland?", a: "Arnhem" },
-                { q: "Welke rivier stroomt langs Arnhem en Nijmegen?", a: "Rijn" },
-                { q: "Wat is de hoofdstad van Noord-Holland?", a: "Haarlem" },
-                { q: "In welke provincie ligt Assen?", a: "Drenthe" }
+                { id: 'GR', name: 'Groningen', path: "M250,20 L280,30 L285,60 L260,75 L230,60 Z" },
+                { id: 'FR', name: 'Friesland', path: "M180,30 L230,30 L245,65 L210,85 L170,80 Z" },
+                { id: 'DR', name: 'Drenthe', path: "M240,75 L280,75 L275,120 L230,120 L220,95 Z" },
+                { id: 'OV', name: 'Overijssel', path: "M210,120 L270,125 L280,170 L220,185 L200,160 Z" },
+                { id: 'FL', name: 'Flevoland', path: "M180,100 L210,105 L220,140 L175,150 Z" },
+                { id: 'NH', name: 'Noord-Holland', path: "M130,50 L170,60 L185,120 L140,140 L120,100 Z" },
+                { id: 'ZH', name: 'Zuid-Holland', path: "M100,150 L145,150 L160,200 L110,210 Z" },
+                { id: 'UT', name: 'Utrecht', path: "M160,155 L195,155 L200,185 L155,190 Z" },
+                { id: 'GL', name: 'Gelderland', path: "M180,185 L220,190 L260,220 L210,250 L160,220 Z" },
+                { id: 'ZE', name: 'Zeeland', path: "M50,220 L100,220 L105,260 L60,270 Z" },
+                { id: 'NB', name: 'Noord-Brabant', path: "M110,225 L200,235 L220,275 L115,280 Z" },
+                { id: 'LI', name: 'Limburg', path: "M210,260 L240,270 L230,340 L205,330 Z" }
             ],
-            wereld: [
-                { q: "Wat is de hoofdstad van Duitsland?", a: "Berlijn" },
-                { q: "In welk land ligt de stad Madrid?", a: "Spanje" },
-                { q: "Wat is de hoofdstad van Frankrijk?", a: "Parijs" },
-                { q: "In welk land ligt Sydney?", a: "Australië" },
-                { q: "Wat is de hoofdstad van Italië?", a: "Rome" },
-                { q: "In welk land ligt de stad Toronto?", a: "Canada" },
-                { q: "Wat is de hoofdstad van Portugal?", a: "Lissabon" },
-                { q: "In welk land ligt Rio de Janeiro?", a: "Brazilië" },
-                { q: "Wat is de hoofdstad van Japan?", a: "Tokio" },
-                { q: "Welke stad wordt de 'Big Apple' genoemd?", a: "New York" }
+            europa: [
+                { id: 'FR', name: 'Frankrijk', path: "M100,180 L160,180 L170,240 L90,250 Z" },
+                { id: 'DE', name: 'Duitsland', path: "M170,130 L220,130 L230,190 L165,190 Z" },
+                { id: 'ES', name: 'Spanje', path: "M40,260 L100,260 L90,320 L30,310 Z" },
+                { id: 'IT', name: 'Italië', path: "M180,245 L210,240 L240,310 L210,320 Z" },
+                { id: 'UK', name: 'Verenigd Koninkrijk', path: "M80,80 L120,80 L115,140 L70,135 Z" },
+                { id: 'PL', name: 'Polen', path: "M230,135 L280,140 L285,185 L230,190 Z" },
+                { id: 'NO', name: 'Noorwegen', path: "M160,20 L190,20 L180,100 L150,90 Z" },
+                { id: 'SE', name: 'Zweden', path: "M195,30 L225,30 L220,110 L185,110 Z" }
             ]
         };
 
-        const germanData = [
-            { nl: "Kan ik u helpen?", de: "Kann ich Ihnen helfen?" },
-            { nl: "Dat kost vijf euro.", de: "Das kostet fünf Euro." },
-            { nl: "Wilt u een bonnetje?", de: "Möchten Sie de Kassenbon?" },
-            { nl: "Fijne dag nog!", de: "Schönen Tag noch!" },
-            { nl: "Alstublieft (bij geven).", de: "Bitte sehr." },
-            { nl: "Dank u wel.", de: "Vielen Dank." },
-            { nl: "Waar zijn de eieren?", de: "Wo sind die Eier?" },
-            { nl: "Momentje alstublieft.", de: "Einen Moment, bitte." },
+        const germanLidlData = [
+            { nl: "Wil je de kassabon mee?", de: "Möchten Sie den Kassenbon?" },
             { nl: "Heeft u een klantenkaart?", de: "Haben Sie eine Kundenkarte?" },
-            { nl: "Alleen pinnen, a.u.b.", de: "Nur Kartenzahlung, bitte." },
-            { nl: "Ingang", de: "Eingang" },
-            { nl: "Uitgang", de: "Ausgang" },
-            { nl: "Kassa", de: "Kasse" },
-            { nl: "Aanbieding", de: "Angebot" }
+            { nl: "Dat is dan €12,50.", de: "Das macht dann zwölf Euro fünfzig." },
+            { nl: "Helaas, dit product is uitverkocht.", de: "Leider ist dieses Produkt ausverkauft." },
+            { nl: "De statiegeldautomaat is daar.", de: "Der Pfandautomat ist dort drüben." },
+            { nl: "Alstublieft, uw wisselgeld.", de: "Bitte sehr, Ihr Wechselgeld." },
+            { nl: "Wilt u een tasje erbij?", de: "Möchten Sie eine Tüte dazu?" },
+            { nl: "Fijne avond nog!", de: "Schönen Feierabend noch!" }
         ];
 
-        const Icon = ({ name, size = 24, className = "" }) => {
+        const Icon = ({ name, size = 24 }) => {
             const iconRef = useRef(null);
             useEffect(() => {
                 if (window.lucide && iconRef.current) {
-                    iconRef.current.innerHTML = ''; 
+                    iconRef.current.innerHTML = '';
                     const iconElement = document.createElement('i');
                     iconElement.setAttribute('data-lucide', name);
-                    if (className) iconElement.className = className;
                     iconElement.style.width = `${size}px`;
                     iconElement.style.height = `${size}px`;
                     iconRef.current.appendChild(iconElement);
-                    window.lucide.createIcons({
-                        attrs: { strokeWidth: 2, width: size, height: size },
-                        nameAttr: 'data-lucide'
-                    });
+                    window.lucide.createIcons({ attrs: { strokeWidth: 2, width: size, height: size } });
                 }
-            }, [name, size, className]);
+            }, [name, size]);
             return <span ref={iconRef} className="inline-flex items-center justify-center" />;
         };
 
@@ -162,22 +106,15 @@
             const [view, setView] = useState('menu');
             const [score, setScore] = useState(() => Number(localStorage.getItem('myrthe_score')) || 0);
             const [mathLevel, setMathLevel] = useState(() => Number(localStorage.getItem('myrthe_level')) || 1);
-            const [mathStreak, setMathStreak] = useState(0); 
+            const [mathStreak, setMathStreak] = useState(0);
             const [selectedTypes, setSelectedTypes] = useState({ plus: true, min: true, keer: false, gedeeld: false });
             const [mathProblem, setMathProblem] = useState({ q: '', a: 0 });
             const [userAnswer, setUserAnswer] = useState('');
             const [feedback, setFeedback] = useState(null);
             const [countries, setCountries] = useState([]);
-            const [flagProblem, setFlagProblem] = useState(null);
-            
-            // Nieuwe States
-            const [topoProblem, setTopoProblem] = useState(null);
-            const [germanProblem, setGermanProblem] = useState(null);
+            const [currentProblem, setCurrentProblem] = useState(null);
 
-            useEffect(() => {
-                localStorage.setItem('myrthe_score', score);
-                localStorage.setItem('myrthe_level', mathLevel);
-            }, [score, mathLevel]);
+            useEffect(() => { localStorage.setItem('myrthe_score', score); localStorage.setItem('myrthe_level', mathLevel); }, [score, mathLevel]);
 
             useEffect(() => {
                 fetch('https://restcountries.com/v3.1/all?fields=name,translations,flags')
@@ -188,8 +125,7 @@
                             flag: c.flags.svg || c.flags.png 
                         })).filter(c => c.name && c.flag);
                         setCountries(list);
-                    })
-                    .catch(err => console.error("Fout bij laden landen:", err));
+                    });
             }, []);
 
             const generateMath = useCallback(() => {
@@ -197,30 +133,16 @@
                 const type = ops.length > 0 ? ops[Math.floor(Math.random() * ops.length)] : 'plus';
                 let n1, n2, q, a;
                 const minVal = Math.max(2, Math.floor(mathLevel / 2));
-
                 switch(type) {
-                    case 'plus':
-                        n1 = Math.floor(Math.random() * (mathLevel * 15)) + minVal;
-                        n2 = Math.floor(Math.random() * (mathLevel * 15)) + minVal;
-                        q = `${n1} + ${n2}`; a = n1 + n2; break;
-                    case 'min':
-                        n1 = Math.floor(Math.random() * (mathLevel * 15)) + (minVal * 2);
-                        n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal;
-                        q = `${n1} - ${n2}`; a = n1 - n2; break;
-                    case 'keer':
-                        let kMax = mathLevel < 5 ? 10 : mathLevel < 15 ? 25 : 100;
-                        n1 = Math.floor(Math.random() * (kMax - minVal + 1)) + minVal;
-                        n2 = Math.floor(Math.random() * (kMax - minVal + 1)) + minVal;
-                        q = `${n1} × ${n2}`; a = n1 * n2; break;
-                    case 'gedeeld':
-                        let dMax = mathLevel < 5 ? 10 : mathLevel < 15 ? 25 : 100;
-                        n2 = Math.floor(Math.random() * (dMax - minVal + 1)) + minVal;
-                        a = Math.floor(Math.random() * (dMax - minVal + 1)) + minVal;
-                        n1 = n2 * a; q = `${n1} : ${n2}`; break;
+                    case 'plus': n1 = Math.floor(Math.random() * (mathLevel * 15)) + minVal; n2 = Math.floor(Math.random() * (mathLevel * 15)) + minVal; q = `${n1} + ${n2}`; a = n1 + n2; break;
+                    case 'min': n1 = Math.floor(Math.random() * (mathLevel * 15)) + (minVal * 2); n2 = Math.floor(Math.random() * (n1 - minVal)) + minVal; q = `${n1} - ${n2}`; a = n1 - n2; break;
+                    case 'keer': n1 = Math.floor(Math.random() * 10) + 1; n2 = Math.floor(Math.random() * 10) + 1; q = `${n1} × ${n2}`; a = n1 * n2; break;
+                    case 'gedeeld': n2 = Math.floor(Math.random() * 9) + 2; a = Math.floor(Math.random() * 10) + 1; n1 = n2 * a; q = `${n1} : ${n2}`; break;
                 }
                 setMathProblem({ q, a });
                 setUserAnswer('');
                 setFeedback(null);
+                setView('math-game');
             }, [selectedTypes, mathLevel]);
 
             const generateFlag = useCallback(() => {
@@ -231,149 +153,152 @@
                     const r = countries[Math.floor(Math.random() * countries.length)];
                     if(!opts.find(o => o.name === r.name)) opts.push(r);
                 }
-                setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
+                setCurrentProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5), category: 'flags' });
                 setFeedback(null);
+                setView('flag-game');
             }, [countries]);
 
-            const generateTopo = useCallback((category = 'mix') => {
-                let pool = [];
-                if (category === 'mix') pool = [...topoData.nederland, ...topoData.wereld];
-                else pool = topoData[category];
-                
+            const generateTopo = (cat) => {
+                const pool = topoQuestions[cat];
                 const correct = pool[Math.floor(Math.random() * pool.length)];
-                let opts = [correct.a];
+                let opts = [correct.name];
                 while(opts.length < 4) {
-                    const r = pool[Math.floor(Math.random() * pool.length)].a;
+                    const r = pool[Math.floor(Math.random() * pool.length)].name;
                     if(!opts.includes(r)) opts.push(r);
                 }
-                setTopoProblem({ q: correct.q, a: correct.a, opts: opts.sort(() => Math.random() - 0.5) });
+                setCurrentProblem({ ...correct, opts: opts.sort(() => Math.random() - 0.5), category: cat });
                 setFeedback(null);
-            }, []);
+                setView('topo-game');
+            };
 
-            const generateGerman = useCallback(() => {
-                const correct = germanData[Math.floor(Math.random() * germanData.length)];
+            const generateGerman = () => {
+                const correct = germanLidlData[Math.floor(Math.random() * germanLidlData.length)];
                 let opts = [correct.de];
                 while(opts.length < 4) {
-                    const r = germanData[Math.floor(Math.random() * germanData.length)].de;
+                    const r = germanLidlData[Math.floor(Math.random() * germanLidlData.length)].de;
                     if(!opts.includes(r)) opts.push(r);
                 }
-                setGermanProblem({ q: correct.nl, a: correct.de, opts: opts.sort(() => Math.random() - 0.5) });
+                setCurrentProblem({ ...correct, opts: opts.sort(() => Math.random() - 0.5), category: 'german' });
                 setFeedback(null);
-            }, []);
+                setView('german-game');
+            };
+
+            const handleAnswer = (ans) => {
+                let isCorrect = false;
+                if (currentProblem.category === 'german') isCorrect = currentProblem.de === ans;
+                else if (currentProblem.category === 'flags') isCorrect = currentProblem.a === ans;
+                else isCorrect = currentProblem.name === ans;
+
+                if (isCorrect) {
+                    setScore(s => s + 5);
+                    setFeedback({ type: 'success', text: 'Top! 🌟' });
+                    setTimeout(() => {
+                        if (currentProblem.category === 'german') generateGerman();
+                        else if (currentProblem.category === 'flags') generateFlag();
+                        else generateTopo(currentProblem.category);
+                    }, 800);
+                } else {
+                    const correctVal = currentProblem.de || currentProblem.name || currentProblem.a;
+                    setFeedback({ type: 'error', text: `Helaas! Het was ${correctVal}` });
+                    setTimeout(() => setFeedback(null), 2000);
+                }
+            };
 
             const Header = ({ title, onBack, showLevel = false }) => (
                 <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-slate-900/80 backdrop-blur-md border-b border-white/5 sticky top-0 z-50">
-                    <button onClick={onBack} className="text-slate-400 active:text-white transition-colors p-2 -ml-2">
-                        <Icon name="chevron-left" size={28} />
-                    </button>
+                    <button onClick={onBack} className="text-slate-400 p-2 -ml-2"><Icon name="chevron-left" size={28} /></button>
                     <div className="flex flex-col items-center">
                         <h2 className="text-[10px] font-black uppercase tracking-[0.2em] italic text-slate-500">{title}</h2>
-                        {showLevel && <span className="text-xs font-bold text-indigo-400">Level {mathLevel}</span>}
+                        {showLevel && <span className="text-[10px] font-bold text-indigo-400">Level {mathLevel}</span>}
                     </div>
                     <div className="flex items-center gap-1.5 bg-orange-500/10 text-orange-500 px-3 py-1 rounded-full border border-orange-500/20">
-                        <Icon name="trophy" size={14} />
-                        <span className="text-xs font-black ml-1">{score}</span>
+                        <Icon name="trophy" size={14} /><span className="text-xs font-black">{score}</span>
                     </div>
                 </div>
             );
 
             if (view === 'menu') {
-                const menuItems = [
-                    { id: 'math-setup', title: 'Rekenen', icon: 'calculator', color: 'bg-indigo-600', shadow: 'shadow-indigo-500/20', sub: `Level ${mathLevel}` },
-                    { id: 'flags', title: 'Vlaggen', icon: 'flag', color: 'bg-emerald-600', shadow: 'shadow-emerald-500/20', sub: 'Wereldreis', action: generateFlag },
-                    { id: 'topo-setup', title: 'Topografie', icon: 'map', color: 'bg-amber-600', shadow: 'shadow-amber-500/20', sub: 'Steden & Landen' },
-                    { id: 'german', title: 'Lidl Duits', icon: 'languages', color: 'bg-rose-600', shadow: 'shadow-rose-500/20', sub: 'Klantcontact', action: generateGerman }
-                ];
-
                 return (
-                    <div className="app-container bg-slate-950">
-                        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                            <h1 className="text-3xl font-black italic uppercase tracking-tighter mb-8 leading-tight">Myrthe's<br/>Oefenmeester</h1>
-                            
-                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                                {menuItems.map(item => (
-                                    <button key={item.id} onClick={() => { if(item.action) item.action(); setView(item.id); }} 
-                                        className="glass p-5 rounded-[2rem] flex flex-col items-center gap-3 active:scale-95 transition-all shadow-xl text-white group relative overflow-hidden">
-                                        <div className={`${item.color} p-3 rounded-2xl shadow-lg flex items-center justify-center transition-transform group-hover:scale-110`}>
-                                            <Icon name={item.icon} size={24} />
-                                        </div>
-                                        <div className="text-center">
-                                            <b className="block text-sm font-bold">{item.title}</b>
-                                            <span className="text-[8px] text-slate-500 uppercase font-black tracking-widest">{item.sub}</span>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="p-6 pb-10 flex justify-center opacity-30">
-                            <span className="text-[10px] font-black tracking-[0.5em] uppercase">Myrthe's Playground</span>
+                    <div className="app-container flex flex-col items-center justify-center p-6 text-center">
+                        <h1 className="text-4xl font-black italic uppercase mb-8 tracking-tighter">Myrthe's<br/>Oefenmeester</h1>
+                        <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                            <button onClick={() => setView('math-setup')} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+                                <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg"><Icon name="calculator" /></div>
+                                <span className="text-sm font-bold">Rekenen</span>
+                            </button>
+                            <button onClick={generateFlag} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+                                <div className="bg-emerald-600 p-3 rounded-2xl shadow-lg"><Icon name="flag" /></div>
+                                <span className="text-sm font-bold">Vlaggen</span>
+                            </button>
+                            <button onClick={() => setView('topo-menu')} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+                                <div className="bg-amber-600 p-3 rounded-2xl shadow-lg"><Icon name="map" /></div>
+                                <span className="text-sm font-bold">Topo</span>
+                            </button>
+                            <button onClick={generateGerman} className="glass p-5 rounded-3xl flex flex-col items-center gap-2 active:scale-95 transition-all">
+                                <div className="bg-rose-600 p-3 rounded-2xl shadow-lg"><Icon name="languages" /></div>
+                                <span className="text-sm font-bold">Duits</span>
+                            </button>
                         </div>
                     </div>
                 );
             }
 
-            // --- REKENEN SETUP ---
             if (view === 'math-setup') {
                 return (
-                    <div className="app-container bg-slate-950">
+                    <div className="app-container">
                         <Header title="Instellingen" onBack={() => setView('menu')} />
-                        <div className="flex-1 p-8 max-w-sm mx-auto w-full overflow-y-auto">
-                            <h3 className="text-xl font-black mb-6 uppercase italic tracking-tight text-white">Kies je sommen</h3>
-                            <div className="grid grid-cols-2 gap-4 mb-10">
+                        <div className="p-8 flex flex-col gap-4">
+                            <h3 className="text-xl font-black italic uppercase">Wat gaan we doen?</h3>
+                            <div className="grid grid-cols-2 gap-4">
                                 {['plus', 'min', 'keer', 'gedeeld'].map(t => (
-                                    <button key={t} onClick={() => setSelectedTypes(prev => ({...prev, [t]: !prev[t]}))}
-                                        className={`p-6 rounded-3xl border-2 transition-all font-black uppercase text-[10px] tracking-widest flex flex-col items-center gap-2 text-white ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400 shadow-xl shadow-indigo-600/20' : 'bg-slate-900 border-transparent opacity-40'}`}>
-                                        <span className="text-2xl">{t === 'plus' ? '+' : t === 'min' ? '-' : t === 'keer' ? '×' : '÷'}</span>
+                                    <button key={t} onClick={() => setSelectedTypes(p => ({...p, [t]: !p[t]}))} className={`p-6 rounded-3xl border-2 transition-all font-black uppercase text-[10px] ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400' : 'bg-slate-900 border-transparent opacity-40'}`}>
                                         {t}
                                     </button>
                                 ))}
                             </div>
-                            <button onClick={() => { generateMath(); setView('math-game'); }} className="w-full bg-indigo-600 py-6 rounded-3xl font-black text-xl shadow-2xl shadow-indigo-600/30 active:scale-95 transition-all uppercase italic text-white">Starten! 🚀</button>
+                            <button onClick={generateMath} className="mt-4 w-full bg-white text-slate-950 py-5 rounded-3xl font-black text-xl italic uppercase">Start! 🚀</button>
                         </div>
                     </div>
                 );
             }
 
-            // --- REKENEN GAME ---
             if (view === 'math-game') {
                 return (
-                    <div className="app-container bg-slate-950">
+                    <div className="app-container">
                         <Header title="Rekenen" showLevel={true} onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col items-center justify-center px-6 overflow-hidden">
-                            <div className="mb-4 flex gap-2">
+                        <div className="flex-1 flex flex-col items-center justify-center p-6">
+                            <div className="flex gap-2 mb-4">
                                 {[...Array(5)].map((_, i) => (
-                                    <div key={i} className={`w-3 h-3 rounded-full transition-all duration-500 ${i < mathStreak ? 'bg-indigo-400 scale-125 shadow-lg shadow-indigo-500/50' : 'bg-slate-800'}`} />
+                                    <div key={i} className={`w-3 h-3 rounded-full ${i < mathStreak ? 'bg-indigo-400 shadow-lg' : 'bg-slate-800'}`} />
                                 ))}
                             </div>
-                            <div className="text-5xl font-black mb-6 tracking-tighter pop-in text-white">{mathProblem.q}</div>
-                            <div className={`text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2rem] border-2 flex items-center justify-center shadow-inner ${feedback?.type === 'success' ? 'border-emerald-500 text-emerald-400' : feedback?.type === 'error' ? 'border-rose-500 text-rose-400' : 'border-slate-800 text-indigo-400'}`}>
+                            <div className="text-5xl font-black mb-6">{mathProblem.q}</div>
+                            <div className="text-5xl font-mono bg-slate-900 w-full max-w-[200px] py-4 rounded-3xl border-2 border-slate-800 flex items-center justify-center text-indigo-400">
                                 {userAnswer || "?"}
                             </div>
-                            <div className="h-10 mt-4 text-sm font-black uppercase tracking-widest text-center">
+                            <div className="h-10 mt-4 text-sm font-black uppercase">
                                 {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
-                        <div className="bg-slate-900/90 p-6 pb-10 rounded-t-[2.5rem] border-t border-white/5">
+                        <div className="bg-slate-900/90 p-6 pb-10 rounded-t-[2.5rem]">
                             <div className="numpad-grid max-w-xs mx-auto">
                                 {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                     <button key={b} onClick={() => {
-                                        if(b === 'OK') { 
-                                            if(!userAnswer) return;
+                                        if(b === 'OK') {
                                             if(parseInt(userAnswer) === mathProblem.a) {
-                                                const newStreak = mathStreak + 1;
-                                                setScore(s => s + 1);
-                                                if (newStreak >= 5) { setMathLevel(l => Math.min(l+1,25)); setMathStreak(0); setFeedback({type:'success', text:'LEVEL UP! 🚀'}); }
-                                                else { setMathStreak(newStreak); setFeedback({type:'success', text:'TOP! ✨'}); }
+                                                const ns = mathStreak + 1;
+                                                setScore(s => s + 2);
+                                                if(ns >= 5) { setMathLevel(l => l + 1); setMathStreak(0); setFeedback({type:'success', text:'LEVEL UP!'}); }
+                                                else { setMathStreak(ns); setFeedback({type:'success', text:'Lekker!'}); }
                                                 setTimeout(generateMath, 800);
                                             } else {
-                                                setFeedback({ type: 'error', text: `FOUT! HET WAS ${mathProblem.a}` });
+                                                setFeedback({type:'error', text:`Fout! Het was ${mathProblem.a}`});
                                                 setMathStreak(0);
-                                                setTimeout(() => { setFeedback(null); setUserAnswer(''); }, 1500);
+                                                setTimeout(() => {setFeedback(null); setUserAnswer('');}, 1500);
                                             }
-                                        }
-                                        else if(b === 'C') setUserAnswer('');
-                                        else if(userAnswer.length < 6) setUserAnswer(userAnswer + b);
-                                    }} className="h-14 rounded-2xl text-xl font-black bg-white/5 border border-white/5 active:scale-90 transition-all text-white">
+                                        } else if(b === 'C') setUserAnswer('');
+                                        else if(userAnswer.length < 5) setUserAnswer(userAnswer + b);
+                                    }} className="h-14 rounded-2xl bg-white/5 font-black text-xl">
                                         {b}
                                     </button>
                                 ))}
@@ -383,32 +308,20 @@
                 );
             }
 
-            // --- VLAGGEN ---
-            if (view === 'flags') {
+            if (view === 'flag-game') {
                 return (
-                    <div className="app-container bg-slate-950">
+                    <div className="app-container">
                         <Header title="Vlaggen" onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 text-center">
-                            <div className="space-y-1">
-                                <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] uppercase">Zoek de vlag van</p>
-                                <h2 className="text-3xl font-black italic uppercase leading-none tracking-tighter text-indigo-400">{flagProblem?.q}</h2>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                                {flagProblem?.opts.map((o, i) => (
-                                    <button key={i} onClick={() => {
-                                        if (o.name === flagProblem.a) {
-                                            setScore(s => s + 2); setFeedback({ type: 'success', text: 'Helemaal goed! 🌍' });
-                                            setTimeout(generateFlag, 800);
-                                        } else {
-                                            setFeedback({ type: 'error', text: 'Fout! Dat is ' + o.name });
-                                            setTimeout(() => setFeedback(null), 1500);
-                                        }
-                                    }} className="aspect-[3/2] glass rounded-3xl p-1.5 active:scale-95 border border-white/10 overflow-hidden shadow-2xl">
-                                        <img src={o.flag} className="w-full h-full object-cover rounded-[1.2rem]" alt="Vlag" />
+                            <h2 className="text-3xl font-black italic uppercase text-emerald-400 leading-tight">{currentProblem.q}</h2>
+                            <div className="grid grid-cols-2 gap-4 w-full">
+                                {currentProblem.opts.map((o, i) => (
+                                    <button key={i} onClick={() => handleAnswer(o.name)} className="glass aspect-[3/2] rounded-2xl overflow-hidden active:scale-95 transition-all">
+                                        <img src={o.flag} className="w-full h-full object-cover" />
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-sm font-black uppercase tracking-widest text-center">
+                            <div className="h-10 text-sm font-black uppercase">
                                 {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
@@ -416,56 +329,44 @@
                 );
             }
 
-            // --- TOPOGRAFIE SETUP ---
-            if (view === 'topo-setup') {
+            if (view === 'topo-menu') {
                 return (
-                    <div className="app-container bg-slate-950">
+                    <div className="app-container">
                         <Header title="Topografie" onBack={() => setView('menu')} />
-                        <div className="flex-1 p-8 max-w-sm mx-auto w-full flex flex-col justify-center gap-4">
-                            <h3 className="text-xl font-black mb-4 uppercase italic tracking-tight text-white">Kies Categorie</h3>
-                            <button onClick={() => { generateTopo('nederland'); setView('topo-game'); }} className="w-full glass p-6 rounded-3xl text-left border-l-4 border-amber-500">
+                        <div className="p-8 flex flex-col gap-4 justify-center flex-1">
+                            <button onClick={() => generateTopo('nederland')} className="glass p-6 rounded-3xl text-left border-l-4 border-amber-500">
                                 <b className="block text-lg">Nederland</b>
-                                <span className="text-[10px] text-slate-500 font-black uppercase">Provincies & Steden</span>
+                                <span className="text-[10px] text-slate-500 font-black uppercase">Provincies</span>
                             </button>
-                            <button onClick={() => { generateTopo('wereld'); setView('topo-game'); }} className="w-full glass p-6 rounded-3xl text-left border-l-4 border-emerald-500">
-                                <b className="block text-lg">Wereld</b>
-                                <span className="text-[10px] text-slate-500 font-black uppercase">Landen & Hoofdsteden</span>
-                            </button>
-                            <button onClick={() => { generateTopo('mix'); setView('topo-game'); }} className="w-full glass p-6 rounded-3xl text-left border-l-4 border-indigo-500">
-                                <b className="block text-lg">Mix</b>
-                                <span className="text-[10px] text-slate-500 font-black uppercase">Alles door elkaar</span>
+                            <button onClick={() => generateTopo('europa')} className="glass p-6 rounded-3xl text-left border-l-4 border-emerald-500">
+                                <b className="block text-lg">Europa</b>
+                                <span className="text-[10px] text-slate-500 font-black uppercase">Landen</span>
                             </button>
                         </div>
                     </div>
                 );
             }
 
-            // --- TOPOGRAFIE GAME ---
             if (view === 'topo-game') {
                 return (
-                    <div className="app-container bg-slate-950">
-                        <Header title="Topografie" onBack={() => setView('topo-setup')} />
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
-                            <div className="space-y-2">
-                                <p className="text-slate-500 font-bold text-[10px] tracking-[0.3em] uppercase italic">Beantwoord de vraag:</p>
-                                <h2 className="text-2xl font-black italic uppercase leading-tight tracking-tight text-white">{topoProblem?.q}</h2>
+                    <div className="app-container">
+                        <Header title="Topografie" onBack={() => setView('topo-menu')} />
+                        <div className="flex-1 flex flex-col p-6 items-center gap-6 overflow-y-auto">
+                            <div className="map-container w-full max-w-[280px] glass p-4 rounded-3xl">
+                                <svg viewBox="0 0 320 350">
+                                    {topoQuestions[currentProblem.category].map(p => (
+                                        <path key={p.id} d={p.path} className={p.id === currentProblem.id ? 'province-active' : 'province-default'} />
+                                    ))}
+                                </svg>
                             </div>
-                            <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
-                                {topoProblem?.opts.map((o, i) => (
-                                    <button key={i} onClick={() => {
-                                        if (o === topoProblem.a) {
-                                            setScore(s => s + 2); setFeedback({ type: 'success', text: 'SUPER! 🏆' });
-                                            setTimeout(() => generateTopo('mix'), 800);
-                                        } else {
-                                            setFeedback({ type: 'error', text: `Helaas! Het was ${topoProblem.a}` });
-                                            setTimeout(() => setFeedback(null), 2000);
-                                        }
-                                    }} className="glass p-5 rounded-2xl active:scale-95 transition-all text-sm font-bold border border-white/5 hover:bg-white/10 text-white">
+                            <div className="grid grid-cols-1 gap-2 w-full max-w-xs">
+                                {currentProblem.opts.map((o, i) => (
+                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-4 rounded-2xl font-bold active:bg-white/10">
                                         {o}
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-sm font-black uppercase tracking-widest text-center">
+                            <div className="h-10 text-sm font-black uppercase">
                                 {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
@@ -473,32 +374,20 @@
                 );
             }
 
-            // --- GERMAN GAME (LIDL) ---
-            if (view === 'german') {
+            if (view === 'german-game') {
                 return (
-                    <div className="app-container bg-slate-950">
+                    <div className="app-container">
                         <Header title="Lidl Duits" onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
-                            <div className="space-y-2">
-                                <div className="bg-yellow-400/10 text-yellow-400 px-3 py-1 rounded-full text-[10px] font-black uppercase inline-block mb-2">Vertaal naar het Duits</div>
-                                <h2 className="text-3xl font-black italic uppercase leading-none tracking-tighter text-white">{germanProblem?.q}</h2>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3 w-full max-w-sm">
-                                {germanProblem?.opts.map((o, i) => (
-                                    <button key={i} onClick={() => {
-                                        if (o === germanProblem.a) {
-                                            setScore(s => s + 3); setFeedback({ type: 'success', text: 'Sehr gut! 🥨' });
-                                            setTimeout(generateGerman, 1000);
-                                        } else {
-                                            setFeedback({ type: 'error', text: `Nein! Es ist: ${germanProblem.a}` });
-                                            setTimeout(() => setFeedback(null), 2500);
-                                        }
-                                    }} className="glass p-5 rounded-2xl active:scale-95 transition-all text-sm font-bold border border-white/5 hover:bg-white/10 text-white">
+                        <div className="flex-1 flex flex-col p-8 items-center justify-center gap-8 text-center">
+                            <h2 className="text-2xl font-black italic">{currentProblem.nl}</h2>
+                            <div className="grid grid-cols-1 gap-3 w-full">
+                                {currentProblem.opts.map((o, i) => (
+                                    <button key={i} onClick={() => handleAnswer(o)} className="glass p-5 rounded-2xl font-bold text-sm">
                                         {o}
                                     </button>
                                 ))}
                             </div>
-                            <div className="h-10 text-sm font-black uppercase tracking-widest text-center">
+                            <div className="h-10 text-sm font-black uppercase">
                                 {feedback && <div className={feedback.type === 'success' ? 'text-emerald-400' : 'text-rose-400'}>{feedback.text}</div>}
                             </div>
                         </div>
