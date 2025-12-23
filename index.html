@@ -14,20 +14,6 @@
     <link rel="apple-touch-icon" href="icon.png">
     <link rel="manifest" href="manifest.json">
 
-    <!-- Webpushr Tracking Code -->
-    <script>
-        (function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
-        
-        // Setup met expliciete weergave van de bel-widget
-        webpushr('setup', {
-            'key': 'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw',
-            'prompt': {
-                'active': true,
-                'type': 'bell'
-            }
-        });
-    </script>
-
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -48,10 +34,20 @@
         .full-h { height: 100vh; height: -webkit-fill-available; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
         
-        /* Verbeterde keyboard footer voor iPhone swipe bar */
-        .keyboard-area {
+        /* De vaste footer onderaan */
+        .app-footer {
+            height: calc(30px + env(safe-area-inset-bottom, 20px));
             padding-bottom: env(safe-area-inset-bottom, 20px);
-            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #1e293b;
+            color: #475569;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1rem;
+            width: 100%;
         }
 
         #root:empty::before {
@@ -103,31 +99,6 @@
                     });
             }, []);
 
-            const enableNotifications = () => {
-                const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-                
-                if (!isStandalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) {
-                    setFeedback("Zet eerst op beginscherm! 📲");
-                    setTimeout(() => setFeedback(null), 3000);
-                    return;
-                }
-
-                setFeedback("Vraag toestemming... 🔔");
-                
-                if (typeof window.webpushr !== 'undefined') {
-                    window.webpushr('prompt', {
-                        'callback': function(result) {
-                            if(result === 'subscribed') setFeedback("Gelukt! ✅");
-                            else if(result === 'blocked') setFeedback("Geweigerd ❌");
-                            setTimeout(() => setFeedback(null), 2000);
-                        }
-                    });
-                } else {
-                    setFeedback("Laden... ⏳");
-                    setTimeout(() => setFeedback(null), 2000);
-                }
-            };
-
             const generateMath = useCallback(() => {
                 const ops = Object.keys(selectedTypes).filter(k => selectedTypes[k]);
                 const type = ops[Math.floor(Math.random() * ops.length)] || 'plus';
@@ -168,67 +139,71 @@
                 }
             };
 
+            const Footer = () => (
+                <div className="app-footer">
+                    Oefenmeester ✨
+                </div>
+            );
+
             if (view === 'menu') {
                 return (
-                    <div className="full-h flex flex-col items-center justify-center p-8 bg-slate-900 text-white gap-6 text-center">
-                        <div className="text-7xl mb-2 animate-bounce">✨</div>
-                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Myrthe's App</h1>
-                        
-                        <div className="w-full max-w-sm space-y-4">
-                            <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10">
-                                <div className="bg-indigo-600 p-4 rounded-2xl"><Icon name="calculator" /></div>
-                                <div className="text-left">
-                                    <b className="block text-xl font-bold">Rekenen</b>
-                                    <span className="opacity-50 text-xs uppercase font-semibold">Plus en min</span>
-                                </div>
-                            </button>
-                            <button onClick={() => { 
-                                setView('flags'); 
-                                const correct = countries[Math.floor(Math.random() * countries.length)];
-                                let opts = [correct];
-                                while(opts.length < 4) {
-                                    const r = countries[Math.floor(Math.random() * countries.length)];
-                                    if(!opts.find(o => o.name === r.name)) opts.push(r);
-                                }
-                                setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
-                            }} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10">
-                                <div className="bg-emerald-600 p-4 rounded-2xl"><Icon name="flag" /></div>
-                                <div className="text-left">
-                                    <b className="block text-xl font-bold">Vlaggen</b>
-                                    <span className="opacity-50 text-xs uppercase font-semibold">Landen raden</span>
-                                </div>
-                            </button>
+                    <div className="full-h flex flex-col bg-slate-900 text-white">
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-6 text-center">
+                            <div className="text-7xl mb-2 animate-bounce">✨</div>
+                            <h1 className="text-4xl font-black italic uppercase tracking-tighter">Myrthe's App</h1>
+                            
+                            <div className="w-full max-w-sm space-y-4">
+                                <button onClick={() => setView('math-setup')} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-indigo-500/10 border border-white/10 text-left">
+                                    <div className="bg-indigo-600 p-4 rounded-2xl"><Icon name="calculator" /></div>
+                                    <div>
+                                        <b className="block text-xl font-bold">Rekenen</b>
+                                        <span className="opacity-50 text-xs uppercase font-semibold">Oefen je sommen</span>
+                                    </div>
+                                </button>
+                                <button onClick={() => { 
+                                    setView('flags'); 
+                                    const correct = countries[Math.floor(Math.random() * countries.length)];
+                                    let opts = [correct];
+                                    while(opts.length < 4) {
+                                        const r = countries[Math.floor(Math.random() * countries.length)];
+                                        if(!opts.find(o => o.name === r.name)) opts.push(r);
+                                    }
+                                    setFlagProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5) });
+                                }} className="w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 transition-all shadow-xl shadow-emerald-500/10 border border-white/10 text-left">
+                                    <div className="bg-emerald-600 p-4 rounded-2xl"><Icon name="flag" /></div>
+                                    <div>
+                                        <b className="block text-xl font-bold">Vlaggen</b>
+                                        <span className="opacity-50 text-xs uppercase font-semibold">Landen raden</span>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
-
-                        <div className="h-8 flex items-center justify-center text-indigo-300 font-bold">
-                            {feedback}
-                        </div>
-
-                        <button onClick={enableNotifications} className="mt-2 flex items-center gap-3 bg-white/5 px-6 py-3 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest active:scale-90 transition-all border border-indigo-500/20">
-                            <Icon name="bell" size={16} /> Meldingen aanzetten
-                        </button>
+                        <Footer />
                     </div>
                 );
             }
 
             if (view === 'math-setup') {
                 return (
-                    <div className="full-h flex flex-col p-8 bg-slate-950 text-white">
-                        <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs mb-8 flex items-center gap-2">
-                             <Icon name="chevron-left" size={16} /> TERUG
-                        </button>
-                        <h2 className="text-2xl font-black mb-6 uppercase italic">Instellingen</h2>
-                        <div className="grid grid-cols-2 gap-4 mb-8">
-                            {['plus', 'min', 'keer', 'gedeeld'].map(t => (
-                                <button key={t} onClick={() => setSelectedTypes({...selectedTypes, [t]: !selectedTypes[t]})}
-                                    className={`p-6 rounded-[2rem] border-2 transition-all font-bold uppercase text-sm ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400 shadow-lg' : 'bg-slate-900 border-white/5 opacity-40'}`}>
-                                    {t}
-                                </button>
-                            ))}
+                    <div className="full-h flex flex-col bg-slate-950 text-white">
+                        <div className="flex-1 p-8">
+                            <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs mb-8 flex items-center gap-2">
+                                 <Icon name="chevron-left" size={16} /> TERUG
+                            </button>
+                            <h2 className="text-2xl font-black mb-6 uppercase italic">Instellingen</h2>
+                            <div className="grid grid-cols-2 gap-4 mb-8">
+                                {['plus', 'min', 'keer', 'gedeeld'].map(t => (
+                                    <button key={t} onClick={() => setSelectedTypes({...selectedTypes, [t]: !selectedTypes[t]})}
+                                        className={`p-6 rounded-[2rem] border-2 transition-all font-bold uppercase text-sm ${selectedTypes[t] ? 'bg-indigo-600 border-indigo-400 shadow-lg' : 'bg-slate-900 border-white/5 opacity-40'}`}>
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                            <button onClick={() => { setView('math-game'); generateMath(); }} className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black text-xl active:scale-95 transition-all shadow-2xl shadow-indigo-500/30">
+                                STARTEN
+                            </button>
                         </div>
-                        <button onClick={() => { setView('math-game'); generateMath(); }} className="w-full bg-indigo-600 py-6 rounded-[2rem] font-black text-xl active:scale-95 transition-all shadow-2xl shadow-indigo-500/30">
-                            STARTEN
-                        </button>
+                        <Footer />
                     </div>
                 );
             }
@@ -236,7 +211,7 @@
             if (view === 'math-game') {
                 return (
                     <div className="full-h flex flex-col bg-slate-950 text-white">
-                        <div className="p-6 flex justify-between items-center bg-slate-900/40 backdrop-blur-md">
+                        <div className="p-6 pt-12 flex justify-between items-center bg-slate-900/40 backdrop-blur-md">
                             <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs">STOP</button>
                             <div className="font-bold text-orange-500">{score} 🔥</div>
                         </div>
@@ -247,9 +222,9 @@
                             </div>
                             <div className="h-12 mt-4 text-2xl font-bold text-emerald-400">{feedback}</div>
                         </div>
-                        {/* Toetsenbord met extra veilige marge onderaan */}
-                        <div className="bg-slate-900 p-6 pt-8 rounded-t-[3rem] shadow-2xl border-t border-white/5 keyboard-area">
-                            <div className="grid grid-cols-3 gap-3">
+                        
+                        <div className="bg-slate-900 p-6 pt-8 rounded-t-[3rem] shadow-2xl border-t border-white/5">
+                            <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto mb-4">
                                 {[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (
                                     <button key={b} onClick={() => {
                                         if(b === 'OK') { if(userAnswer) checkMath(); }
@@ -259,6 +234,7 @@
                                 ))}
                             </div>
                         </div>
+                        <Footer />
                     </div>
                 );
             }
@@ -275,15 +251,15 @@
                     setFeedback(null);
                 };
                 return (
-                    <div className="full-h flex flex-col bg-slate-950 text-white p-8">
-                        <div className="flex justify-between items-center mb-10">
+                    <div className="full-h flex flex-col bg-slate-950 text-white">
+                         <div className="p-6 pt-12 flex justify-between items-center bg-slate-900/40 backdrop-blur-md">
                             <button onClick={() => setView('menu')} className="text-slate-500 font-bold uppercase text-xs">STOP</button>
                             <div className="font-bold text-orange-500">{score} 🔥</div>
                         </div>
-                        <div className="flex-1 flex flex-col items-center justify-center gap-10 text-center">
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 gap-8 text-center">
                             <div className="space-y-2">
                                 <p className="text-slate-500 font-bold text-[10px] tracking-widest uppercase">Welk land is dit?</p>
-                                <h2 className="text-4xl font-black italic uppercase">{flagProblem?.q}</h2>
+                                <h2 className="text-4xl font-black italic uppercase leading-none">{flagProblem?.q}</h2>
                             </div>
                             <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                                 {flagProblem?.opts.map((o, i) => (
@@ -300,7 +276,7 @@
                             </div>
                             <div className="h-10 text-xl font-bold text-emerald-400 italic">{feedback}</div>
                         </div>
-                        <div className="h-[env(safe-area-inset-bottom)]"></div>
+                        <Footer />
                     </div>
                 );
             }
