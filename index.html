@@ -14,10 +14,6 @@
 
     <link rel="manifest" href='data:application/manifest+json,{"name":"Myrthes Oefenmeester","short_name":"Oefenmeester","start_url":".","display":"standalone","background_color":"#020617","theme_color":"#020617","icons":[{"src":"https://raw.githubusercontent.com/joris-db/oefenmeester/refs/heads/main/icon.png","sizes":"512x512","type":"image/png"}]}'>
 
-    <script>(function(w,d, s, id) {if(typeof(w.webpushr)!=='undefined') return;w.webpushr=w.webpushr||function(){(w.webpushr.q=w.webpushr.q||[]).push(arguments)};var js, fjs = d.getElementsByTagName(s)[0];js = d.createElement(s); js.id = id;js.async=1;js.src = "https://cdn.webpushr.com/app.min.js";
-    fjs.parentNode.appendChild(js);}(window,document, 'script', 'webpushr-jssdk'));
-    webpushr('setup',{'key':'BE3We82PbRdwBzZZ5c0SwG7iysKjYc8MLkVwgzVVv2OyBtmM8Zt-JqDP63PmxZY1KyjfIXv3OhBb4kEWmlbz0Mw' });</script>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -34,11 +30,7 @@
         }
         .app-container { height: 100vh; height: -webkit-fill-available; display: flex; flex-direction: column; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
-        .pop-in { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        .map-container svg { width: 100%; height: auto; max-height: 280px; filter: drop-shadow(0 0 10px rgba(0,0,0,0.5)); }
-        .province-active { fill: #fbbf24 !important; stroke: #fff !important; stroke-width: 2px; }
-        .province-default { fill: #1e293b; stroke: #475569; stroke-width: 1px; transition: fill 0.3s; }
+        .map-img { width: 100%; height: auto; border-radius: 1rem; object-fit: contain; background: #cbd5e1; }
         .numpad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     </style>
 </head>
@@ -48,38 +40,43 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        const topoQuestions = {
+        // Data voor topografie met echte afbeeldingen van Wikimedia Commons
+        const topoData = {
             nederland: [
-                { id: 'GR', name: 'Groningen', path: "M250,20 L280,30 L285,60 L260,75 L230,60 Z" },
-                { id: 'FR', name: 'Friesland', path: "M180,30 L230,30 L245,65 L210,85 L170,80 Z" },
-                { id: 'DR', name: 'Drenthe', path: "M240,75 L280,75 L275,120 L230,120 L220,95 Z" },
-                { id: 'OV', name: 'Overijssel', path: "M210,120 L270,125 L280,170 L220,185 L200,160 Z" },
-                { id: 'FL', name: 'Flevoland', path: "M180,100 L210,105 L220,140 L175,150 Z" },
-                { id: 'NH', name: 'Noord-Holland', path: "M130,50 L170,60 L185,120 L140,140 L120,100 Z" },
-                { id: 'ZH', name: 'Zuid-Holland', path: "M100,150 L145,150 L160,200 L110,210 Z" },
-                { id: 'UT', name: 'Utrecht', path: "M160,155 L195,155 L200,185 L155,190 Z" },
-                { id: 'GL', name: 'Gelderland', path: "M180,185 L220,190 L260,220 L210,250 L160,220 Z" },
-                { id: 'ZE', name: 'Zeeland', path: "M50,220 L100,220 L105,260 L60,270 Z" },
-                { id: 'NB', name: 'Noord-Brabant', path: "M110,225 L200,235 L220,275 L115,280 Z" },
-                { id: 'LI', name: 'Limburg', path: "M210,260 L240,270 L230,340 L205,330 Z" }
+                { name: 'Groningen', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Groningen_position.svg/400px-Groningen_position.svg.png' },
+                { name: 'Friesland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Friesland_position.svg/400px-Friesland_position.svg.png' },
+                { name: 'Drenthe', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Drenthe_position.svg/400px-Drenthe_position.svg.png' },
+                { name: 'Overijssel', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f0/Overijssel_position.svg/400px-Overijssel_position.svg.png' },
+                { name: 'Flevoland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Flevoland_position.svg/400px-Flevoland_position.svg.png' },
+                { name: 'Gelderland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cc/Gelderland_position.svg/400px-Gelderland_position.svg.png' },
+                { name: 'Utrecht', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Utrecht_position.svg/400px-Utrecht_position.svg.png' },
+                { name: 'Noord-Holland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Noord-Holland_position.svg/400px-Noord-Holland_position.svg.png' },
+                { name: 'Zuid-Holland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Zuid-Holland_position.svg/400px-Zuid-Holland_position.svg.png' },
+                { name: 'Zeeland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Zeeland_position.svg/400px-Zeeland_position.svg.png' },
+                { name: 'Noord-Brabant', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Noord-Brabant_position.svg/400px-Noord-Brabant_position.svg.png' },
+                { name: 'Limburg', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Limburg_position.svg/400px-Limburg_position.svg.png' }
             ],
             europa: [
-                { id: 'FR', name: 'Frankrijk', path: "M100,180 L160,180 L170,240 L90,250 Z" },
-                { id: 'DE', name: 'Duitsland', path: "M170,130 L220,130 L230,190 L165,190 Z" },
-                { id: 'ES', name: 'Spanje', path: "M40,260 L100,260 L90,320 L30,310 Z" },
-                { id: 'IT', name: 'Italië', path: "M180,245 L210,240 L240,310 L210,320 Z" },
-                { id: 'UK', name: 'Verenigd Koninkrijk', path: "M80,80 L120,80 L115,140 L70,135 Z" },
-                { id: 'PL', name: 'Polen', path: "M230,135 L280,140 L285,185 L230,190 Z" },
-                { id: 'NO', name: 'Noorwegen', path: "M160,20 L190,20 L180,100 L150,90 Z" },
-                { id: 'SE', name: 'Zweden', path: "M195,30 L225,30 L220,110 L185,110 Z" }
+                { name: 'Frankrijk', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/EU-France.svg/400px-EU-France.svg.png' },
+                { name: 'Duitsland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/EU-Germany.svg/400px-EU-Germany.svg.png' },
+                { name: 'Italië', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/EU-Italy.svg/400px-EU-Italy.svg.png' },
+                { name: 'Spanje', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/EU-Spain.svg/400px-EU-Spain.svg.png' },
+                { name: 'Polen', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/EU-Poland.svg/400px-EU-Poland.svg.png' },
+                { name: 'Portugal', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/EU-Portugal.svg/400px-EU-Portugal.svg.png' },
+                { name: 'Griekenland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/EU-Greece.svg/400px-EU-Greece.svg.png' },
+                { name: 'Zweden', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/EU-Sweden.svg/400px-EU-Sweden.svg.png' },
+                { name: 'Noorwegen', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Norway_in_Europe.svg/400px-Norway_in_Europe.svg.png' },
+                { name: 'Finland', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/be/EU-Finland.svg/400px-EU-Finland.svg.png' },
+                { name: 'Oostenrijk', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/EU-Austria.svg/400px-EU-Austria.svg.png' },
+                { name: 'België', img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ae/EU-Belgium.svg/400px-EU-Belgium.svg.png' }
             ]
         };
 
         const germanLidlData = [
             { nl: "Wil je de kassabon mee?", de: "Möchten Sie den Kassenbon?" },
-            { nl: "Heeft u een klantenkaart?", de: "Haben Sie eine Kundenkarte?" },
-            { nl: "Dat is dan €12,50.", de: "Das macht dann zwölf Euro fünfzig." },
-            { nl: "Helaas, dit product is uitverkocht.", de: "Leider ist dieses Produkt ausverkauft." },
+            { nl: "Heeft u een klantenkaart?", de: "Haben Sie een klantenkaart?" },
+            { nl: "Dat is dan €12,50.", de: "Das macht dan twaalf euro vijftig." },
+            { nl: "Helaas, dit product is uitverkocht.", de: "Leider ist dieses Produkt uitverkocht." },
             { nl: "De statiegeldautomaat is daar.", de: "Der Pfandautomat ist dort drüben." },
             { nl: "Alstublieft, uw wisselgeld.", de: "Bitte sehr, Ihr Wechselgeld." },
             { nl: "Wilt u een tasje erbij?", de: "Möchten Sie eine Tüte dazu?" },
@@ -153,13 +150,13 @@
                     const r = countries[Math.floor(Math.random() * countries.length)];
                     if(!opts.find(o => o.name === r.name)) opts.push(r);
                 }
-                setCurrentProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5), category: 'flags' });
+                setCurrentProblem({ q: correct.name, a: correct.name, opts: opts.sort(() => Math.random() - 0.5), category: 'flags', flag: correct.flag });
                 setFeedback(null);
                 setView('flag-game');
             }, [countries]);
 
             const generateTopo = (cat) => {
-                const pool = topoQuestions[cat];
+                const pool = topoData[cat];
                 const correct = pool[Math.floor(Math.random() * pool.length)];
                 let opts = [correct.name];
                 while(opts.length < 4) {
@@ -317,7 +314,7 @@
                             <div className="grid grid-cols-2 gap-4 w-full">
                                 {currentProblem.opts.map((o, i) => (
                                     <button key={i} onClick={() => handleAnswer(o.name)} className="glass aspect-[3/2] rounded-2xl overflow-hidden active:scale-95 transition-all">
-                                        <img src={o.flag} className="w-full h-full object-cover" />
+                                        <img src={o.flag} className="w-full h-full object-cover" alt="Vlag" />
                                     </button>
                                 ))}
                             </div>
@@ -352,13 +349,10 @@
                     <div className="app-container">
                         <Header title="Topografie" onBack={() => setView('topo-menu')} />
                         <div className="flex-1 flex flex-col p-6 items-center gap-6 overflow-y-auto">
-                            <div className="map-container w-full max-w-[280px] glass p-4 rounded-3xl">
-                                <svg viewBox="0 0 320 350">
-                                    {topoQuestions[currentProblem.category].map(p => (
-                                        <path key={p.id} d={p.path} className={p.id === currentProblem.id ? 'province-active' : 'province-default'} />
-                                    ))}
-                                </svg>
+                            <div className="w-full max-w-[320px] p-2 bg-white rounded-2xl">
+                                <img src={currentProblem.img} className="map-img" alt="Kaart" />
                             </div>
+                            <div className="text-center font-black uppercase text-xs tracking-widest text-slate-500 italic">Welk gebied is rood gemarkeerd?</div>
                             <div className="grid grid-cols-1 gap-2 w-full max-w-xs">
                                 {currentProblem.opts.map((o, i) => (
                                     <button key={i} onClick={() => handleAnswer(o)} className="glass p-4 rounded-2xl font-bold active:bg-white/10">
