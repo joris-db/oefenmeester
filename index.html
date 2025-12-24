@@ -34,6 +34,7 @@
             border-radius: 1rem;
             background: #1e293b;
             padding: 4px;
+            transition: all 0.2s;
         }
         .flag-img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.75rem; }
 
@@ -46,6 +47,9 @@
         
         .progress-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.5s ease-out; }
+
+        .correct-highlight { border: 4px solid #10b981 !important; transform: scale(1.05); z-index: 10; }
+        .wrong-highlight { border: 4px solid #f43f5e !important; opacity: 0.7; }
     </style>
 </head>
 <body>
@@ -90,7 +94,7 @@
             const [view, setView] = useState('menu');
             const [countries, setCountries] = useState([]);
             const [feedback, setFeedback] = useState(null);
-            const [lastWords, setLastWords] = useState([]); 
+            const [selectedChoice, setSelectedChoice] = useState(null);
             
             const [stats, setStats] = useState(() => {
                 const saved = localStorage.getItem(`${appId}_stats`);
@@ -99,7 +103,7 @@
                     correctMath: 0, correctGerman: 0, correctFlags: 0,
                     mathLevel: 1, flagBestStreak: 0,
                     totalPoints: 0, 
-                    badges: [] // ['math_pro', 'flag_master', 'german_ace']
+                    badges: []
                 };
             });
 
@@ -154,7 +158,6 @@
                         setFeedback({ type: 'success', text: `LEVEL UP! Level ${currentLevel} 🎉` });
                     }
 
-                    // Check for badges
                     if (prev.correctMath + 1 >= 50 && !newBadges.includes('reken_wonder')) newBadges.push('reken_wonder');
                     if (prev.flagBestStreak >= 10 && !newBadges.includes('vlaggen_koning')) newBadges.push('vlaggen_koning');
 
@@ -193,7 +196,7 @@
                 return { ...correct, opts: opts.sort(() => Math.random() - 0.5), category: 'german' };
             };
 
-            const generateFlagProblemData = () => {
+            const generateFlagProblemData = (mode = 'flags') => {
                 if (!countries.length) return null;
                 const correct = countries[Math.floor(Math.random() * countries.length)];
                 let opts = [correct];
@@ -201,14 +204,28 @@
                     const r = countries[Math.floor(Math.random() * countries.length)];
                     if(!opts.find(o => o.name === r.name)) opts.push(r);
                 }
-                return { ...correct, opts: opts.sort(() => Math.random() - 0.5), category: 'flags' };
+                return { ...correct, opts: opts.sort(() => Math.random() - 0.5), category: mode };
             };
 
             const handleChoiceAnswer = (ans) => {
                 if (feedback) return;
-                const isCorrect = (currentProblem.category === 'german') ? (ans === currentProblem.de) : (ans.name === currentProblem.name);
+                setSelectedChoice(ans);
+                
+                const isCorrect = (currentProblem.category === 'german') 
+                    ? (ans === currentProblem.de) 
+                    : (currentProblem.category === 'landen-raden' 
+                        ? (ans.name === currentProblem.name) 
+                        : (ans.name === currentProblem.name));
 
-                if (view === 'exam-choice') { nextExamQuestion(isCorrect); return; }
+                if (view === 'exam-choice') { 
+                    setFeedback({ type: isCorrect ? 'success' : 'error', text: isCorrect ? 'Goed!' : 'Fout!' });
+                    setTimeout(() => {
+                        setFeedback(null);
+                        setSelectedChoice(null);
+                        nextExamQuestion(isCorrect); 
+                    }, 1000);
+                    return; 
+                }
 
                 if (view === 'flag-streak') {
                     if (isCorrect) {
@@ -217,24 +234,39 @@
                         if (newStreak > stats.flagBestStreak) setStats(prev => ({ ...prev, flagBestStreak: newStreak }));
                         addXP(10, 'correctFlags');
                         setFeedback({ type: 'success', text: `Streak: ${newStreak}! 🔥` });
-                        setTimeout(() => { setFeedback(null); setCurrentProblem(generateFlagProblemData()); }, 800);
+                        setTimeout(() => { 
+                            setFeedback(null); 
+                            setSelectedChoice(null);
+                            setCurrentProblem(generateFlagProblemData('flags')); 
+                        }, 800);
                     } else {
                         setFeedback({ type: 'error', text: `Helaas! Dit was ${currentProblem.name}.` });
-                        setTimeout(() => setView('menu'), 2000);
+                        // Wacht even zodat gebruiker juiste antwoord ziet (uitgelicht in render)
+                        setTimeout(() => {
+                            setFeedback(null);
+                            setSelectedChoice(null);
+                            setView('menu');
+                        }, 2500);
                     }
                     return;
                 }
 
                 if (isCorrect) {
-                    addXP(20, currentProblem.category === 'german' ? 'correctGerman' : 'correctFlags');
+                    addXP(20, (currentProblem.category === 'landen-raden' || currentProblem.category === 'flags') ? 'correctFlags' : 'correctGerman');
                     setFeedback({ type: 'success', text: 'Super gedaan! ✨' });
                     setTimeout(() => { 
                         setFeedback(null); 
-                        setCurrentProblem(currentProblem.category === 'german' ? generateGermanProblem() : generateFlagProblemData()); 
+                        setSelectedChoice(null);
+                        if (currentProblem.category === 'german') setCurrentProblem(generateGermanProblem());
+                        else if (currentProblem.category === 'landen-raden') setCurrentProblem(generateFlagProblemData('landen-raden'));
+                        else setCurrentProblem(generateFlagProblemData('flags'));
                     }, 1000);
                 } else {
-                    setFeedback({ type: 'error', text: 'Nog eens proberen!' });
-                    setTimeout(() => setFeedback(null), 1500);
+                    setFeedback({ type: 'error', text: 'Kijk goed!' });
+                    setTimeout(() => {
+                        setFeedback(null);
+                        setSelectedChoice(null);
+                    }, 1500);
                 }
             };
 
@@ -264,14 +296,15 @@
 
             const startExam = (type) => {
                 setExamState({ type, currentQuestion: 1, correctCount: 0, totalQuestions: 20 });
+                setFeedback(null);
+                setSelectedChoice(null);
                 if (type === 'math') {
                     setMathProblem(generateMathProblem(stats.mathLevel));
                     setView('exam-math');
                 } else {
-                    setCurrentProblem(type === 'german' ? generateGermanProblem() : generateFlagProblemData());
+                    setCurrentProblem(type === 'german' ? generateGermanProblem() : generateFlagProblemData('flags'));
                     setView('exam-choice');
                 }
-                setFeedback(null);
             };
 
             const nextExamQuestion = (isCorrect) => {
@@ -286,14 +319,14 @@
                         setMathProblem(generateMathProblem(stats.mathLevel));
                         setUserAnswer('');
                     } else {
-                        setCurrentProblem(examState.type === 'german' ? generateGermanProblem() : generateFlagProblemData());
+                        setCurrentProblem(examState.type === 'german' ? generateGermanProblem() : generateFlagProblemData('flags'));
                     }
                 }
             };
 
             const Header = ({ title, onBack }) => (
                 <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-slate-900/90 border-b border-white/5 sticky top-0 z-50">
-                    <button onClick={onBack} className="text-slate-400 p-2 active:scale-90"><Icon name="chevron-left" size={24} /></button>
+                    <button onClick={() => { setFeedback(null); setSelectedChoice(null); onBack(); }} className="text-slate-400 p-2 active:scale-90"><Icon name="chevron-left" size={24} /></button>
                     <div className="text-center">
                         <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">{title}</h2>
                         <div className="flex items-center justify-center gap-1 text-orange-500 font-bold text-xs">
@@ -332,7 +365,7 @@
                             <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest">Kies een vak</h3>
                             <button onClick={() => setView('math-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-indigo-500"><div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Rekenen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Niveau {stats.mathLevel}</span></div></button>
                             <button onClick={() => setView('german-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-rose-500"><div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="languages" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Duits</span><span className="text-[10px] font-bold text-slate-500 uppercase">Lidl woorden oefenen</span></div></button>
-                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Hoogste streak: {stats.flagBestStreak}</span></div></button>
+                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Wereldkennis vergroten</span></div></button>
                         </div>
                     </div>
                 );
@@ -373,22 +406,49 @@
                 );
             }
 
-            if ((view === 'german-game' || view === 'flags-game' || view === 'exam-choice' || view === 'flag-streak') && currentProblem) {
-                const isFlags = currentProblem.category === 'flags';
+            if ((view === 'german-game' || view === 'flags-game' || view === 'exam-choice' || view === 'flag-streak' || view === 'landen-raden') && currentProblem) {
+                const isFlags = currentProblem.category === 'flags' || view === 'flag-streak';
+                const isLandenRaden = currentProblem.category === 'landen-raden';
+                const isGerman = currentProblem.category === 'german';
+
                 return (
                     <div className="app-container">
-                        <Header title={view === 'flag-streak' ? "Flag Streak" : (isFlags ? "Vlaggen" : "Duits")} onBack={() => setView('menu')} />
+                        <Header title={view === 'flag-streak' ? `Streak: ${streakCount}` : (isFlags ? "Vlaggen" : (isLandenRaden ? "Landen Raden" : "Duits"))} onBack={() => setView('menu')} />
                         <div className="flex-1 flex flex-col p-8 items-center justify-start gap-6 text-center overflow-y-auto pt-8 scroll-hide">
                             <div className="space-y-2">
-                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">{isFlags ? "Zoek de vlag van" : "Vertaal naar het Duits"}</span>
-                                <h2 className="text-3xl font-black italic tracking-tighter text-white">{isFlags ? currentProblem.name : currentProblem.nl}</h2>
+                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">
+                                    {isFlags ? "Zoek de vlag van" : (isLandenRaden ? "Van welk land is deze vlag?" : "Vertaal naar het Duits")}
+                                </span>
+                                {isLandenRaden ? (
+                                    <div className="w-full max-w-[280px] mx-auto flag-card p-0 shadow-2xl overflow-hidden mb-4">
+                                        <img src={currentProblem.flag} className="flag-img" alt="guess" />
+                                    </div>
+                                ) : (
+                                    <h2 className="text-3xl font-black italic tracking-tighter text-white">{isFlags ? currentProblem.name : currentProblem.nl}</h2>
+                                )}
                             </div>
+                            
                             <div className={`grid ${isFlags ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full max-w-sm`}>
-                                {currentProblem.opts.map((o, i) => (
-                                    <button key={i} onClick={() => handleChoiceAnswer(o)} className={`${isFlags ? 'flag-card active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} glass border-2 border-transparent active:border-white/40`}>
-                                        {isFlags ? <img src={o.flag} className="flag-img" alt="flag" /> : o}
-                                    </button>
-                                ))}
+                                {currentProblem.opts.map((o, i) => {
+                                    const isCorrect = isLandenRaden ? (o.name === currentProblem.name) : (isGerman ? (o === currentProblem.de) : (o.name === currentProblem.name));
+                                    const isSelected = selectedChoice === o;
+                                    const showTruth = feedback && feedback.type === 'error';
+                                    
+                                    return (
+                                        <button 
+                                            key={i} 
+                                            onClick={() => handleChoiceAnswer(o)} 
+                                            className={`
+                                                ${isFlags ? 'flag-card active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} 
+                                                glass border-2 transition-all
+                                                ${isSelected && !isCorrect ? 'wrong-highlight' : ''}
+                                                ${showTruth && isCorrect ? 'correct-highlight' : 'border-transparent'}
+                                            `}
+                                        >
+                                            {isFlags ? <img src={o.flag} className="flag-img" alt="flag" /> : (isLandenRaden ? o.name : o)}
+                                        </button>
+                                    );
+                                })}
                             </div>
                             <div className="h-16 mt-4">{feedback && <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}</div>
                         </div>
@@ -447,7 +507,12 @@
                 const config = {
                     math: { title: "Rekenen", color: "indigo", opts: [{ name: 'Training', desc: 'Sommen maken', icon: 'graduation-cap', action: () => setView('math-setup') }, { name: 'Toets', desc: '20 vragen', icon: 'scroll-text', action: () => startExam('math') }] },
                     german: { title: "Duits", color: "rose", opts: [{ name: 'Oefenen', desc: 'Woorden leren', icon: 'book-open', action: () => { setCurrentProblem(generateGermanProblem()); setView('german-game'); } }, { name: 'Toets', desc: '20 vragen', icon: 'scroll-text', action: () => startExam('german') }] },
-                    flags: { title: "Vlaggen", color: "emerald", opts: [{ name: 'Oefenen', desc: 'Landen leren', icon: 'globe', action: () => { setCurrentProblem(generateFlagProblemData()); setView('flags-game'); } }, { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: () => { setStreakCount(0); setCurrentProblem(generateFlagProblemData()); setView('flag-streak'); } }, { name: 'Toets', desc: '20 landen', icon: 'scroll-text', action: () => startExam('flags') }] }
+                    flags: { title: "Vlaggen", color: "emerald", opts: [
+                        { name: 'Vlag Zoeken', desc: 'Vind de vlag bij de naam', icon: 'flag', action: () => { setCurrentProblem(generateFlagProblemData('flags')); setView('flags-game'); } }, 
+                        { name: 'Landen Raden', desc: 'Kies de naam bij de vlag', icon: 'map-pin', action: () => { setCurrentProblem(generateFlagProblemData('landen-raden')); setView('landen-raden'); } },
+                        { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: () => { setStreakCount(0); setCurrentProblem(generateFlagProblemData('flags')); setView('flag-streak'); } }, 
+                        { name: 'Toets', desc: '20 landen', icon: 'scroll-text', action: () => startExam('flags') }
+                    ]}
                 }[type];
                 
                 return (
@@ -455,9 +520,9 @@
                         <Header title={config.title} onBack={() => setView('menu')} />
                         <div className="p-8 flex flex-col gap-6 justify-center flex-1 max-w-sm mx-auto w-full">
                             {config.opts.map((opt, i) => (
-                                <button key={i} onClick={opt.action} disabled={type === 'flags' && countries.length === 0} className={`w-full glass p-6 rounded-[2.5rem] flex items-center gap-6 active:scale-95 border-b-4 border-${config.color}-500/50`}>
-                                    <div className={`bg-${config.color}-600 p-4 rounded-2xl shadow-lg`}><Icon name={opt.icon} size={24} /></div>
-                                    <div className="text-left"><span className="block text-xl font-black italic uppercase">{opt.name}</span><span className="text-[10px] font-bold text-slate-500 uppercase">{opt.desc}</span></div>
+                                <button key={i} onClick={opt.action} disabled={type === 'flags' && countries.length === 0} className={`w-full glass p-5 rounded-[2.2rem] flex items-center gap-6 active:scale-95 border-b-4 border-${config.color}-500/50`}>
+                                    <div className={`bg-${config.color}-600 p-4 rounded-2xl shadow-lg`}><Icon name={opt.icon} size={22} /></div>
+                                    <div className="text-left"><span className="block text-lg font-black italic uppercase leading-tight">{opt.name}</span><span className="text-[10px] font-bold text-slate-500 uppercase">{opt.desc}</span></div>
                                 </button>
                             ))}
                         </div>
