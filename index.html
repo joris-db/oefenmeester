@@ -40,10 +40,10 @@
 
         @keyframes levelUp {
             0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 0.9; }
             100% { transform: scale(1); opacity: 1; }
         }
-        .animate-levelup { animation: levelUp 0.5s ease-out; }
+        .animate-levelup { animation: levelUp 0.4s ease-out; }
         
         .progress-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.5s ease-out; }
@@ -58,7 +58,7 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback, useRef } = React;
 
-        const appId = 'myrthe-oefenmeester-v7';
+        const appId = 'myrthe-oefenmeester-v8';
 
         const germanLidlWords = [
             { nl: "De vergadering", de: "Besprechung" }, { nl: "De afspraak", de: "Termin" }, { nl: "De collega", de: "Kollege" }, { nl: "De afdeling", de: "Abteilung" },
@@ -71,6 +71,28 @@
             { nl: "Het filiaal", de: "Filiale" }, { nl: "De manager", de: "Geschäftsführer" }, { nl: "Het magazijn", de: "Lager" }, { nl: "De vrachtwagen", de: "LKW" },
             { nl: "Het product", de: "Produkt" }, { nl: "De kwaliteit", de: "Qualität" }, { nl: "De versheid", de: "Frische" }, { nl: "De verpakking", de: "Verpackung" },
             { nl: "Het schap", de: "Regal" }, { nl: "De mand", de: "Korb" }, { nl: "De kar", de: "Einkaufswagen" }, { nl: "De bon", de: "Quittung" }
+        ];
+
+        const compliments = [
+            "Myrthe, jij bent een vlaggen-wonder!",
+            "Super gedaan Myrthe, je bent een topper!",
+            "Wat een meesterbrein is die Myrthe toch!",
+            "Myrthe gaat als een raket vandaag! 🚀",
+            "Niemand doet het zoals Myrthe! ✨",
+            "Myrthe, je bent onstuitbaar!",
+            "Echt een Myrthe-actie: gewoon perfect!",
+            "Wauw Myrthe, wat ben je slim!",
+            "Myrthe de Grote slaat weer toe!",
+            "Je bent een natuurtalent, Myrthe!"
+        ];
+
+        const encouragement = [
+            "Geen zorgen Myrthe, de volgende heb je!",
+            "Bijna Myrthe! Blijf focussen.",
+            "Myrthe, laat je niet kisten, je kunt dit!",
+            "Zelfs Myrthe maakt wel eens een foutje, op naar de volgende!",
+            "Even goed kijken Myrthe, je weet het wel!",
+            "Kop op Myrthe, je bent nog steeds de beste!"
         ];
 
         const Icon = ({ name, size = 24, className = "" }) => {
@@ -172,6 +194,35 @@
                 });
             };
 
+            const getRandomFeedback = (isCorrect) => {
+                const arr = isCorrect ? compliments : encouragement;
+                return arr[Math.floor(Math.random() * arr.length)];
+            };
+
+            const generateFlagProblemData = (mode = 'flags') => {
+                if (!countries.length) return null;
+                
+                // Bij mixed mode: wissel af tussen vlag-zoeken en landen-raden
+                let activeType = mode;
+                if (mode === 'mixed') {
+                    activeType = Math.random() > 0.5 ? 'flags' : 'landen-raden';
+                }
+
+                const correct = countries[Math.floor(Math.random() * countries.length)];
+                let opts = [correct];
+                while(opts.length < 4) {
+                    const r = countries[Math.floor(Math.random() * countries.length)];
+                    if(!opts.find(o => o.name === r.name)) opts.push(r);
+                }
+                
+                return { 
+                    ...correct, 
+                    opts: opts.sort(() => Math.random() - 0.5), 
+                    category: activeType,
+                    originalMode: mode // Bewaar de bron-modus voor de volgende vraag
+                };
+            };
+
             const generateMathProblem = (level, types = null) => {
                 const opsPool = types || Object.keys(selectedTypes).filter(k => selectedTypes[k]);
                 const type = opsPool.length > 0 ? opsPool[Math.floor(Math.random() * opsPool.length)] : 'plus';
@@ -196,29 +247,16 @@
                 return { ...correct, opts: opts.sort(() => Math.random() - 0.5), category: 'german' };
             };
 
-            const generateFlagProblemData = (mode = 'flags') => {
-                if (!countries.length) return null;
-                const correct = countries[Math.floor(Math.random() * countries.length)];
-                let opts = [correct];
-                while(opts.length < 4) {
-                    const r = countries[Math.floor(Math.random() * countries.length)];
-                    if(!opts.find(o => o.name === r.name)) opts.push(r);
-                }
-                return { ...correct, opts: opts.sort(() => Math.random() - 0.5), category: mode };
-            };
-
             const handleChoiceAnswer = (ans) => {
                 if (feedback) return;
                 setSelectedChoice(ans);
                 
                 const isCorrect = (currentProblem.category === 'german') 
                     ? (ans === currentProblem.de) 
-                    : (currentProblem.category === 'landen-raden' 
-                        ? (ans.name === currentProblem.name) 
-                        : (ans.name === currentProblem.name));
+                    : (ans.name === currentProblem.name);
 
                 if (view === 'exam-choice') { 
-                    setFeedback({ type: isCorrect ? 'success' : 'error', text: isCorrect ? 'Goed!' : 'Fout!' });
+                    setFeedback({ type: isCorrect ? 'success' : 'error', text: isCorrect ? 'Goed!' : 'Oei!' });
                     setTimeout(() => {
                         setFeedback(null);
                         setSelectedChoice(null);
@@ -233,15 +271,14 @@
                         setStreakCount(newStreak);
                         if (newStreak > stats.flagBestStreak) setStats(prev => ({ ...prev, flagBestStreak: newStreak }));
                         addXP(10, 'correctFlags');
-                        setFeedback({ type: 'success', text: `Streak: ${newStreak}! 🔥` });
+                        setFeedback({ type: 'success', text: `${getRandomFeedback(true)} (${newStreak} 🔥)` });
                         setTimeout(() => { 
                             setFeedback(null); 
                             setSelectedChoice(null);
                             setCurrentProblem(generateFlagProblemData('flags')); 
-                        }, 800);
+                        }, 1000);
                     } else {
-                        setFeedback({ type: 'error', text: `Helaas! Dit was ${currentProblem.name}.` });
-                        // Wacht even zodat gebruiker juiste antwoord ziet (uitgelicht in render)
+                        setFeedback({ type: 'error', text: `Helaas Myrthe! Dit was ${currentProblem.name}.` });
                         setTimeout(() => {
                             setFeedback(null);
                             setSelectedChoice(null);
@@ -252,21 +289,24 @@
                 }
 
                 if (isCorrect) {
-                    addXP(20, (currentProblem.category === 'landen-raden' || currentProblem.category === 'flags') ? 'correctFlags' : 'correctGerman');
-                    setFeedback({ type: 'success', text: 'Super gedaan! ✨' });
+                    addXP(20, (currentProblem.category.includes('flags') || currentProblem.category.includes('landen')) ? 'correctFlags' : 'correctGerman');
+                    setFeedback({ type: 'success', text: getRandomFeedback(true) });
                     setTimeout(() => { 
                         setFeedback(null); 
                         setSelectedChoice(null);
-                        if (currentProblem.category === 'german') setCurrentProblem(generateGermanProblem());
-                        else if (currentProblem.category === 'landen-raden') setCurrentProblem(generateFlagProblemData('landen-raden'));
-                        else setCurrentProblem(generateFlagProblemData('flags'));
-                    }, 1000);
+                        if (currentProblem.category === 'german') {
+                            setCurrentProblem(generateGermanProblem());
+                        } else {
+                            // Blijf in dezelfde modus (mixed, landen-raden, of flags)
+                            setCurrentProblem(generateFlagProblemData(currentProblem.originalMode || currentProblem.category));
+                        }
+                    }, 1200);
                 } else {
-                    setFeedback({ type: 'error', text: 'Kijk goed!' });
+                    setFeedback({ type: 'error', text: getRandomFeedback(false) });
                     setTimeout(() => {
                         setFeedback(null);
                         setSelectedChoice(null);
-                    }, 1500);
+                    }, 1800);
                 }
             };
 
@@ -281,16 +321,16 @@
                         if (next >= 5) setStats(p => ({ ...p, mathLevel: p.mathLevel + 1 }));
                         return next >= 5 ? 0 : next;
                     });
-                    setFeedback({type:'success', text:'Lekker hoor! ✨'});
+                    setFeedback({type:'success', text: getRandomFeedback(true)});
                     setTimeout(() => {
                         setMathProblem(generateMathProblem(stats.mathLevel));
                         setUserAnswer('');
                         setFeedback(null);
-                    }, 800);
+                    }, 1000);
                 } else {
-                    setFeedback({type:'error', text:`Nee, het was ${mathProblem.a}`});
+                    setFeedback({type:'error', text: getRandomFeedback(false) + ` (Het was ${mathProblem.a})`});
                     setMathStreak(0);
-                    setTimeout(() => {setFeedback(null); setUserAnswer('');}, 2000);
+                    setTimeout(() => {setFeedback(null); setUserAnswer('');}, 2200);
                 }
             };
 
@@ -365,7 +405,7 @@
                             <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest">Kies een vak</h3>
                             <button onClick={() => setView('math-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-indigo-500"><div className="bg-indigo-600 p-4 rounded-2xl shadow-lg"><Icon name="calculator" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Rekenen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Niveau {stats.mathLevel}</span></div></button>
                             <button onClick={() => setView('german-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-rose-500"><div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="languages" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Duits</span><span className="text-[10px] font-bold text-slate-500 uppercase">Lidl woorden oefenen</span></div></button>
-                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Wereldkennis vergroten</span></div></button>
+                            <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Landen en vlaggen</span></div></button>
                         </div>
                     </div>
                 );
@@ -399,38 +439,44 @@
                             {!isExam && <div className="flex gap-2 mb-6">{[...Array(5)].map((_, i) => (<div key={i} className={`w-3 h-3 rounded-full ${i < mathStreak ? 'bg-indigo-400' : 'bg-slate-800'}`} />))}</div>}
                             <div className="text-7xl font-black mb-10 tracking-tighter drop-shadow-2xl">{mathProblem.q}</div>
                             <div className="text-5xl font-mono bg-slate-900 w-full max-w-[240px] py-6 rounded-[2.5rem] border-2 border-indigo-500/30 flex items-center justify-center text-indigo-400 shadow-inner">{userAnswer || "?"}</div>
-                            <div className="h-16 mt-6">{feedback && <div className={`font-black uppercase text-center px-8 py-3 rounded-2xl shadow-xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}</div>
+                            <div className="h-20 mt-6 px-4">
+                                {feedback && (
+                                    <div className={`font-black uppercase text-sm text-center px-6 py-3 rounded-2xl shadow-xl leading-snug ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>
+                                        {feedback.text}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="bg-slate-900/95 p-6 pb-12 rounded-t-[3rem] glass border-t border-white/5"><div className="numpad-grid max-w-xs mx-auto">{[1,2,3,4,5,6,7,8,9,'C',0,'OK'].map(b => (<button key={b} onClick={() => { if(b === 'OK') handleMathAnswer(); else if(b === 'C') setUserAnswer(''); else if(userAnswer.length < 5) setUserAnswer(userAnswer + b); }} className="h-16 rounded-2xl bg-white/5 font-black text-2xl active:bg-white/20 shadow-lg border border-white/5">{b}</button>))}</div></div>
                     </div>
                 );
             }
 
-            if ((view === 'german-game' || view === 'flags-game' || view === 'exam-choice' || view === 'flag-streak' || view === 'landen-raden') && currentProblem) {
-                const isFlags = currentProblem.category === 'flags' || view === 'flag-streak';
+            if ((view === 'german-game' || view === 'flags-game' || view === 'exam-choice' || view === 'flag-streak' || view === 'landen-raden' || view === 'mixed-game') && currentProblem) {
+                const isFlags = currentProblem.category === 'flags';
                 const isLandenRaden = currentProblem.category === 'landen-raden';
                 const isGerman = currentProblem.category === 'german';
 
                 return (
                     <div className="app-container">
-                        <Header title={view === 'flag-streak' ? `Streak: ${streakCount}` : (isFlags ? "Vlaggen" : (isLandenRaden ? "Landen Raden" : "Duits"))} onBack={() => setView('menu')} />
-                        <div className="flex-1 flex flex-col p-8 items-center justify-start gap-6 text-center overflow-y-auto pt-8 scroll-hide">
-                            <div className="space-y-2">
-                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest">
+                        <Header title={view === 'flag-streak' ? `Streak: ${streakCount}` : (view === 'mixed-game' ? "Gemixte Modus" : (isFlags ? "Vlaggen Zoeken" : (isLandenRaden ? "Landen Raden" : "Duits")))} onBack={() => setView('menu')} />
+                        <div className="flex-1 flex flex-col p-8 items-center justify-start gap-4 text-center overflow-y-auto pt-8 scroll-hide">
+                            <div className="space-y-3">
+                                <span className="text-slate-500 uppercase text-[10px] font-black tracking-widest block">
                                     {isFlags ? "Zoek de vlag van" : (isLandenRaden ? "Van welk land is deze vlag?" : "Vertaal naar het Duits")}
                                 </span>
                                 {isLandenRaden ? (
-                                    <div className="w-full max-w-[280px] mx-auto flag-card p-0 shadow-2xl overflow-hidden mb-4">
+                                    <div className="w-full max-w-[280px] mx-auto flag-card p-0 shadow-2xl overflow-hidden mb-4 border-2 border-white/10">
                                         <img src={currentProblem.flag} className="flag-img" alt="guess" />
                                     </div>
                                 ) : (
-                                    <h2 className="text-3xl font-black italic tracking-tighter text-white">{isFlags ? currentProblem.name : currentProblem.nl}</h2>
+                                    <h2 className="text-3xl font-black italic tracking-tighter text-white drop-shadow-lg">{isFlags ? currentProblem.name : currentProblem.nl}</h2>
                                 )}
                             </div>
                             
-                            <div className={`grid ${isFlags ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full max-w-sm`}>
+                            <div className={`grid ${isFlags ? 'grid-cols-2' : 'grid-cols-1'} gap-4 w-full max-w-sm mt-4`}>
                                 {currentProblem.opts.map((o, i) => {
-                                    const isCorrect = isLandenRaden ? (o.name === currentProblem.name) : (isGerman ? (o === currentProblem.de) : (o.name === currentProblem.name));
+                                    const isThisCorrect = isLandenRaden ? (o.name === currentProblem.name) : (isGerman ? (o === currentProblem.de) : (o.name === currentProblem.name));
                                     const isSelected = selectedChoice === o;
                                     const showTruth = feedback && feedback.type === 'error';
                                     
@@ -439,10 +485,10 @@
                                             key={i} 
                                             onClick={() => handleChoiceAnswer(o)} 
                                             className={`
-                                                ${isFlags ? 'flag-card active:scale-95' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} 
-                                                glass border-2 transition-all
-                                                ${isSelected && !isCorrect ? 'wrong-highlight' : ''}
-                                                ${showTruth && isCorrect ? 'correct-highlight' : 'border-transparent'}
+                                                ${isFlags ? 'flag-card active:scale-95 shadow-lg' : 'p-5 rounded-[1.5rem] font-bold text-lg active:scale-95'} 
+                                                glass border-2 transition-all duration-200
+                                                ${isSelected && !isThisCorrect ? 'wrong-highlight' : ''}
+                                                ${showTruth && isThisCorrect ? 'correct-highlight' : 'border-transparent'}
                                             `}
                                         >
                                             {isFlags ? <img src={o.flag} className="flag-img" alt="flag" /> : (isLandenRaden ? o.name : o)}
@@ -450,7 +496,13 @@
                                     );
                                 })}
                             </div>
-                            <div className="h-16 mt-4">{feedback && <div className={`font-black uppercase px-8 py-3 rounded-2xl shadow-2xl ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>{feedback.text}</div>}</div>
+                            <div className="h-20 mt-4 flex items-center justify-center px-4 w-full">
+                                {feedback && (
+                                    <div className={`font-black uppercase text-sm text-center px-6 py-3 rounded-2xl shadow-2xl leading-tight ${feedback.type === 'success' ? 'bg-emerald-500 animate-levelup' : 'bg-rose-500'}`}>
+                                        {feedback.text}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 );
@@ -508,8 +560,9 @@
                     math: { title: "Rekenen", color: "indigo", opts: [{ name: 'Training', desc: 'Sommen maken', icon: 'graduation-cap', action: () => setView('math-setup') }, { name: 'Toets', desc: '20 vragen', icon: 'scroll-text', action: () => startExam('math') }] },
                     german: { title: "Duits", color: "rose", opts: [{ name: 'Oefenen', desc: 'Woorden leren', icon: 'book-open', action: () => { setCurrentProblem(generateGermanProblem()); setView('german-game'); } }, { name: 'Toets', desc: '20 vragen', icon: 'scroll-text', action: () => startExam('german') }] },
                     flags: { title: "Vlaggen", color: "emerald", opts: [
-                        { name: 'Vlag Zoeken', desc: 'Vind de vlag bij de naam', icon: 'flag', action: () => { setCurrentProblem(generateFlagProblemData('flags')); setView('flags-game'); } }, 
+                        { name: 'Vlag Zoeken', desc: 'Kies de vlag bij de naam', icon: 'search', action: () => { setCurrentProblem(generateFlagProblemData('flags')); setView('flags-game'); } }, 
                         { name: 'Landen Raden', desc: 'Kies de naam bij de vlag', icon: 'map-pin', action: () => { setCurrentProblem(generateFlagProblemData('landen-raden')); setView('landen-raden'); } },
+                        { name: 'Gemixte Modus', desc: 'Beide types door elkaar', icon: 'shuffle', action: () => { setCurrentProblem(generateFlagProblemData('mixed')); setView('mixed-game'); } },
                         { name: 'Streak', desc: `Record: ${stats.flagBestStreak}`, icon: 'zap', action: () => { setStreakCount(0); setCurrentProblem(generateFlagProblemData('flags')); setView('flag-streak'); } }, 
                         { name: 'Toets', desc: '20 landen', icon: 'scroll-text', action: () => startExam('flags') }
                     ]}
@@ -518,7 +571,7 @@
                 return (
                     <div className="app-container">
                         <Header title={config.title} onBack={() => setView('menu')} />
-                        <div className="p-8 flex flex-col gap-6 justify-center flex-1 max-w-sm mx-auto w-full">
+                        <div className="p-8 flex flex-col gap-5 justify-center flex-1 max-w-sm mx-auto w-full overflow-y-auto scroll-hide">
                             {config.opts.map((opt, i) => (
                                 <button key={i} onClick={opt.action} disabled={type === 'flags' && countries.length === 0} className={`w-full glass p-5 rounded-[2.2rem] flex items-center gap-6 active:scale-95 border-b-4 border-${config.color}-500/50`}>
                                     <div className={`bg-${config.color}-600 p-4 rounded-2xl shadow-lg`}><Icon name={opt.icon} size={22} /></div>
