@@ -70,6 +70,24 @@
             object-fit: cover;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
+
+        /* Notification Settings Styling */
+        .notification-settings {
+            margin-top: 2rem;
+            padding: 1rem;
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            text-align: center;
+            width: 100%;
+            max-width: 320px;
+        }
+        .notification-settings p {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -426,12 +444,15 @@
                             <button onClick={() => setView('german-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-rose-500"><div className="bg-rose-600 p-4 rounded-2xl shadow-lg"><Icon name="languages" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Duits</span><span className="text-[10px] font-bold text-slate-500 uppercase">Lidl woorden oefenen</span></div></button>
                             <button onClick={() => setView('flags-category')} className="w-full glass p-6 rounded-[2rem] flex items-center gap-6 active:scale-95 border-l-4 border-emerald-500"><div className="bg-emerald-600 p-4 rounded-2xl shadow-lg"><Icon name="flag" size={28} /></div><div className="text-left"><span className="block text-xl font-black italic uppercase">Vlaggen</span><span className="text-[10px] font-bold text-slate-500 uppercase">Landen en vlaggen</span></div></button>
                         </div>
+
+                        <div className="notification-settings">
+                           <p>Wil je op de hoogte blijven?</p>
+                           <span id="webpushr-subscription-toggle-button" data-size="1.1" data-text-when-denied="Je hebt meldingen geblokkeerd." data-tooltip-position="right" data-color="#2c7be5"></span>
+                        </div>
                     </div>
                 );
             }
 
-            // ... [Andere views blijven hetzelfde als in de vorige versie] ...
-            
             if (view === 'math-setup') {
                 return (
                     <div className="app-container">
@@ -609,4 +630,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>
+</html> 
